@@ -509,6 +509,29 @@ select:focus {
 .mainmenu-area .logo a {
     display: inline-block;
 } */
+ .mainmenu-area {
+    display: flex;
+    align-items: center; /* vertically center logo and menu */
+    justify-content: space-between; /* keep spacing balanced */
+}
+
+.mainmenu-area .logo {
+    padding-right: 20px; /* smaller gap */
+    padding-top: 0; /* remove extra top padding */
+    padding-bottom: 0;
+}
+
+.mainmenu-area .logo img {
+    height: 50px; /* adjust logo height */
+    width: auto;
+}
+
+.main-menu {
+    display: flex;
+    gap: 30px; /* spacing between menu items */
+    align-items: center; /* align menu items with logo */
+}
+
 .main-menu {
     float: left;
     position: relative;
