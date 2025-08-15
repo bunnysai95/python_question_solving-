@@ -1,9 +1,162 @@
 {% extends "best/base.html" %}
 {% load static %}
 {% block body_block %}
+<!-- ===== Profile in Updates Section ===== -->
+<section id="update-profile" class="container" style="max-width:980px;margin:48px auto;">
+  <h2 style="margin-bottom:16px;">About My Profile</h2>
+
+  <!-- Profile Card -->
+  <div id="profileCard" style="display:flex;gap:20px;align-items:center;background:#0f2830; color:#fff; border-radius:14px;padding:18px 20px;">
+    <img id="p_avatar" src="https://ui-avatars.com/api/?name=Your+Name&background=0D8ABC&color=fff&rounded=true&size=128"
+         alt="avatar" style="width:96px;height:96px;border-radius:50%;object-fit:cover;">
+    <div style="flex:1;">
+      <h3 id="p_name" style="margin:0 0 6px;">Mateti</h3>
+      <div id="p_title" style="opacity:.85;margin-bottom:6px;">Python Developer</div>
+      <p id="p_bio" style="margin:0 0 10px;opacity:.9;">I Developes web applications</p>
+      <div id="p_skills" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+      <div style="margin-top:10px;display:flex;gap:12px;">
+        <a id="p_linkedin" href="#" target="_blank" rel="noopener" style="color:#9adcf7;text-decoration:underline;display:none;">LinkedIn</a>
+        <a id="p_github" href="#" target="_blank" rel="noopener" style="color:#9adcf7;text-decoration:underline;display:none;">GitHub</a>
+        <a id="p_portfolio" href="#" target="_blank" rel="noopener" style="color:#9adcf7;text-decoration:underline;display:none;">Portfolio</a>
+      </div>
+    </div>
+    <button id="editBtn" type="button" style="border:0;padding:10px 14px;border-radius:10px;cursor:pointer;background:#2bb0ed;color:#003344;">
+      Edit Profile
+    </button>
+  </div>
+
+  <!-- Edit Form (collapsible) -->
+  <form id="profileForm" style="display:none;margin-top:16px;background:#11343d;color:#fff;border-radius:12px;padding:16px 14px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <label>Full Name
+        <input name="name" type="text" placeholder="Your Name" style="width:100%;padding:10px;border-radius:8px;border:1px solid #20545f;background:#0c2630;color:#e9f8ff;">
+      </label>
+      <label>Title
+        <input name="title" type="text" placeholder="e.g., Python Developer" style="width:100%;padding:10px;border-radius:8px;border:1px solid #20545f;background:#0c2630;color:#e9f8ff;">
+      </label>
+      <label style="grid-column:1 / -1;">Short Bio
+        <textarea name="bio" rows="3" placeholder="1–2 lines about you" style="width:100%;padding:10px;border-radius:8px;border:1px solid #20545f;background:#0c2630;color:#e9f8ff;"></textarea>
+      </label>
+      <label>Skills (comma-separated)
+        <input name="skills" type="text" placeholder="Python, Django, SQL" style="width:100%;padding:10px;border-radius:8px;border:1px solid #20545f;background:#0c2630;color:#e9f8ff;">
+      </label>
+      <label>Avatar URL (optional)
+        <input name="avatar" type="url" placeholder="https://…" style="width:100%;padding:10px;border-radius:8px;border:1px solid #20545f;background:#0c2630;color:#e9f8ff;">
+      </label>
+      <label>LinkedIn URL
+        <input name="linkedin" type="url" placeholder="https://linkedin.com/in/…" style="width:100%;padding:10px;border-radius:8px;border:1px solid #20545f;background:#0c2630;color:#e9f8ff;">
+      </label>
+      <label>GitHub URL
+        <input name="github" type="url" placeholder="https://github.com/…" style="width:100%;padding:10px;border-radius:8px;border:1px solid #20545f;background:#0c2630;color:#e9f8ff;">
+      </label>
+      <label>Portfolio URL
+        <input name="portfolio" type="url" placeholder="https://your-site.com" style="width:100%;padding:10px;border-radius:8px;border:1px solid #20545f;background:#0c2630;color:#e9f8ff;">
+      </label>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:10px;">
+      <button type="submit" style="border:0;padding:10px 14px;border-radius:10px;cursor:pointer;background:#2bb0ed;color:#003344;">Save</button>
+      <button id="cancelBtn" type="button" style="border:1px solid #2bb0ed;padding:10px 14px;border-radius:10px;cursor:pointer;background:transparent;color:#2bb0ed;">Cancel</button>
+      <button id="clearBtn" type="button" style="margin-left:auto;border:0;padding:10px 14px;border-radius:10px;cursor:pointer;background:#ef4444;color:#fff;">Clear Profile</button>
+    </div>
+  </form>
+</section>
+
+<script>
+  // --- helpers
+  const $ = (s, p=document)=>p.querySelector(s);
+  const card = $("#profileCard");
+  const form = $("#profileForm");
+  const editBtn = $("#editBtn");
+  const cancelBtn = $("#cancelBtn");
+  const clearBtn = $("#clearBtn");
+
+  const fields = ["name","title","bio","skills","avatar","linkedin","github","portfolio"];
+
+  function render(profile){
+    $("#p_name").textContent  = profile.name || "Your Name";
+    $("#p_title").textContent = profile.title || "Your Role (e.g., Python Developer)";
+    $("#p_bio").textContent   = profile.bio || "Short bio goes here. Keep it to 1–2 lines.";
+
+    // avatar
+    const avatar = profile.avatar?.trim();
+    $("#p_avatar").src = avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name||'Your Name')}&background=0D8ABC&color=fff&rounded=true&size=128`;
+
+    // skills chips
+    const skillsWrap = $("#p_skills");
+    skillsWrap.innerHTML = "";
+    (profile.skills || "")
+      .split(",")
+      .map(s=>s.trim()).filter(Boolean)
+      .slice(0,12)
+      .forEach(s=>{
+        const chip = document.createElement("span");
+        chip.textContent = s;
+        chip.style.cssText = "background:#0aa1d1; color:#002733; padding:6px 10px; border-radius:999px; font-size:12px;";
+        skillsWrap.appendChild(chip);
+      });
+
+    // links
+    [["p_linkedin","linkedin"],["p_github","github"],["p_portfolio","portfolio"]].forEach(([id,key])=>{
+      const el = $("#"+id);
+      const val = (profile[key]||"").trim();
+      if(val){ el.href = val; el.style.display = "inline-block"; }
+      else   { el.style.display = "none"; }
+    });
+  }
+
+  function load(){
+    try{
+      const saved = JSON.parse(localStorage.getItem("best_profile")||"{}");
+      return saved;
+    }catch{ return {}; }
+  }
+  function save(profile){
+    localStorage.setItem("best_profile", JSON.stringify(profile));
+  }
+
+  // init
+  const start = load();
+  render(start);
+
+  // open editor with current values
+  editBtn.addEventListener("click", ()=>{
+    form.style.display = form.style.display === "none" ? "block" : "none";
+    fields.forEach(f=>{ form.elements[f].value = start[f] || ""; });
+    form.scrollIntoView({behavior:"smooth", block:"center"});
+  });
+
+  // cancel
+  cancelBtn.addEventListener("click", ()=>{
+    form.style.display = "none";
+  });
+
+  // clear
+  clearBtn.addEventListener("click", ()=>{
+    localStorage.removeItem("best_profile");
+    const empty = {};
+    fields.forEach(f=> empty[f]="");
+    Object.assign(start, empty);
+    render(start);
+    form.style.display = "none";
+  });
+
+  // submit
+  form.addEventListener("submit", (e)=>{
+    e.preventDefault();
+    const profile = {};
+    fields.forEach(f=> profile[f] = form.elements[f].value.trim());
+    Object.assign(start, profile);
+    save(start);
+    render(start);
+    form.style.display = "none";
+  });
+</script>
+
+
 
     <h1>Update Page</h1>
     <p>This is the update page content.</p>
+    
 {% endblock body_block %}
 
 <!-- {% block extra_css %}
