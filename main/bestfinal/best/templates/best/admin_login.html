@@ -1,0 +1,113 @@
+{% extends 'best/base.html' %}
+{% load static %}
+{% block body_block %}
+<section class="breadcrumb-area" style="background-image: url('{% static 'images/resources/breadcrumb-bg.jpg' %}');">
+	<div class="container">
+	    <div class="row">
+	        <div class="col-md-12">
+	            <div class="breadcrumbs">
+	                <h1>Admin LOGIN</h1>
+	            </div>
+	        </div>
+	    </div>
+	</div>
+</section>
+<!--End breadcrumb area-->
+
+<!--Start breadcrumb bottom area-->     
+<section class="breadcrumb-bottom-area">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="left pull-left">
+                    <ul>
+                        <li><a href="/">Home</a></li>
+                        <li><i class="fa fa-angle-right" aria-hidden="true"></i></li>
+                        <li class="active">Login</li>
+                    </ul>
+                </div>
+                <!--<div class="right pull-right">-->
+                <!--    <a href="#">-->
+                <!--        <span><i class="fa fa-share-alt" aria-hidden="true"></i>Share</span> -->
+                <!--    </a>   -->
+                <!--</div>    -->
+            </div>
+        </div>
+    </div>
+</section>
+<!--End breadcrumb bottom area-->
+<section class="choosing-area">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6 col-sm-12 col-lg-6 col-xs-12" style="background-color:#f29200;padding:15px;">
+                <div class="sec-title text-center" style="margin-top:5%;margin-bottom:4%;">
+                    <h3 class="appform">Welcome To BEST</h3>
+                    <!--<span class="border mar0auto"></span>-->
+                    <hr style="width:10%;border:1px solid #000000;">
+                </div> 
+                <div>
+                    <p style="text-align:justify;color:#ffffff;margin-left:3%;margin-right:3%;margin-top:-2%;">BHARAT EXCELLENCE SCHOLARSHIP TEST here in referred as BEST which is an online scholarship test, conducted by Avira Foundation in order to bring out hidden talent in students.BEST honours and supports the talented students across India which will be the way for their higher education.Main objective of the scholarship test is to identify students with potential to study and support them with cash rewards.Students from 6th to 10th class with any board can apply for the BEST.</p>
+                </div>
+                <div style="text-align:center;">
+                    <a href="/about" style="border-radius:10px;background-color:white;color:#f29200;padding:10px;text-align:center;" target="_blank">Know More</a>
+                </div>
+            </div>
+            <div class="col-md-6 col-sm-12 col-lg-6 col-xs-12" style="background-color:#640606;padding:15px;">
+                <div class="sec-title text-center" style="margin-top:3%;">
+                    <h3 class="appform" style="color:#ffffff;">Login To BEST</h3>
+                    <!--<span class="border mar0auto"></span>-->
+                    <hr style="width:10%;border:1px solid #ffffff;">
+                </div>
+                <form style="margin-left:3%;margin-right:3%;margin-top:-1.5%;">
+                    {% csrf_token %}
+                    <div class="form-group">
+						<label class="control-label" for="fname" style="color:#ffffff;">User Name:</label>
+						<input type="text" class="form-control input" id="uname" name="uname" required>
+					</div>
+					<div class="form-group">
+						<label class="control-label" for="pwd" style="color:#ffffff;">Password:</label>
+						<input type="password" class="form-control input" id="pwd" name="pwd" required>
+					</div>
+					<div class="form-group" style="margin-top:2%;text-align:center;">
+                        <button type="submit" class="btn btn-default" style="margin-top:5%;color:#640606;">Submit</button>
+					</div>
+                </form>
+        
+            </div>
+        </div>
+    </div>
+</section>
+
+<!--Start Brand area-->  
+<section class="brand-area">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="sec-title text-center">
+                    <h1>Our Partners</h1>   
+                    <span class="border mar0auto"></span>
+                </div>
+                <div class="col-md-3 col-sm-12 col-lg-3 col-xs-12" style="text-align:center;margin-top:3%;">
+                    <h5 style="margin-bottom:5%;">Organised By</h5>
+                    <img src="{% static 'images/brand/aviralogo1.png' %}" alt="Awesome Brand Image" style="margin-top:-10%;">
+                </div>
+                <div class="col-md-6 col-xs-12 col-lg-6 col-sm-12" style="margin-top:1%;">
+                    <h5 class="partner" style="text-align:center;margin-bottom:5%;">Technical Partner</h5>
+                    <div class="col-md-6 col-sm-6 col-lg-6 col-xs-6">
+                        <img src="{% static 'images/brand/pnv.png' %}" alt="Awesome Brand Image">
+                    </div>
+                    <div class="col-md-6 col-sm-6 col-lg-6 col-xs-6">
+                        <img src="{% static 'images/brand/wz.jpg' %}" alt="Awesome Brand Image" style="width:80%;">
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-12 col-lg-3 col-xs-12" style="text-align:center; margin-top:3%;">
+                    <h5 style="margin-bottom:5%;">Event By</h5>
+                    <img src="{% static 'images/brand/dmc.png' %}" alt="Awesome Brand Image" style="width:50%;">
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!--End Brand area--> 
+
+{% endblock %}

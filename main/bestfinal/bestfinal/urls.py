@@ -24,4 +24,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("",views.home,name="home"),
     path("update/",views.update,name="update"), 
+    path("application/",views.application,name="application"),
+    path("admin_login/",views.admin_login,name="admin_login"),
+    path("about",views.about, name="about"),
 ]
