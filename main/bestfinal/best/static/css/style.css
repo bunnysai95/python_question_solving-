@@ -1091,6 +1091,13 @@ select:focus {
     About Area style
 =============================================
 ***/
+section.about-area {
+    background: #c0e2c0 !important; /* light green */
+}
+
+section.about-area .img-holder:before {
+    background: #c0e2c0 !important; /* match or transparent */
+}
 .about-area {
     background: #f29200;
     overflow: hidden;
@@ -1103,16 +1110,16 @@ select:focus {
     padding-bottom: 33px;
 }
 .about-area .text-holder .sec-title h1{
-    color: #ffffff;
+    color: #0a0707;
 }
 .about-area .text-holder .sec-title .border:before{
     background: #ffffff;
 }
 .about-area .text-holder p{
-    color: #ffffff;
+    color: #040404;
 }
 .about-area .text-holder h3 {
-    color: #ffffff;
+    color: #010000;
     font-weight: 400;
     margin: 20px 0 15px;
 }
@@ -1132,7 +1139,7 @@ select:focus {
 }
 .about-area .text-holder .call-us h2 {
     font-size: 22px;
-    color: #ffffff;
+    color: #050505;
     font-weight: 400;
     line-height: 30px;
 }
@@ -1173,6 +1180,12 @@ select:focus {
     -webkit-transform: scale(1);
     transform: scale(1);
 }
+   .about-area p,
+    .about-area h2,
+    .about-area h3,
+    .about-area span {
+        color: #000000 !important;
+    }
 
 
 
