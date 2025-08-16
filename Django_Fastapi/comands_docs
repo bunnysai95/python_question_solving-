@@ -1,0 +1,8 @@
+uvicorn main:app --reload    # to run the fastapi general run
+i fwe want to run in a specific url then this 
+uvicorn main:app --host 0.0.0.0 --port 8001 --reload   # i made this port public from github web
+at the end of url keep  ----> /docs#/ this will open ui for fast api
+
+
+pip install fastapi
+pip install uvicorn
