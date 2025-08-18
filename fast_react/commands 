@@ -1,0 +1,4 @@
+pip install fastapi
+pip install tortoise-orm
+pip install uvicorn
+uvicorn app:app --reload
