@@ -11,11 +11,11 @@ class Product(Model):
     quantity_sold = fields.IntField(default = 0 )
     unit_price = fields.DecimalField(max_digits=10, 
                                      decimal_places=2,
-                                     default = (0.00),
+                                     default = Decimal("0.00"),
                                      )
     revenue = fields.DecimalField(max_digits=20,
                                   decimal_places=2,
-                                  default = (0.00),
+                                  default = Decimal("0.00"),
                                   )
     supplied_by = fields.ForeignKeyField("models.Supplier",
                                           related_name="goods_supplied")
@@ -30,7 +30,7 @@ class Supplier(Model):
 
 
 # create pydantic models for product
-product_pydantic = pydantic_model_creator(Product, name="Product"),
+product_pydantic = pydantic_model_creator(Product, name="Product")
 product_pydanticIn = pydantic_model_creator(Product, name= "ProductIn", exclude_readonly=True)
 
 # create pydantic models for Supplier
