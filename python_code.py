@@ -41,3 +41,34 @@ def two_sum(nums, target):
         
 print(two_sum([2, 7, 11, 15], 9)) 
 
+
+
+
+import random
+
+# Dictionary of questions and answers
+qa_bank = {
+    "What is the capital of France?": "Paris",
+    "Who developed the theory of relativity?": "Albert Einstein",
+    "What is 9 x 9?": "81",
+    "Which language is this program written in?": "Python",
+    "What is the largest planet in our solar system?": "Jupiter",
+    "Who painted the Mona Lisa?": "Leonardo da Vinci",
+    "What does CPU stand for?": "Central Processing Unit",
+    "What is the chemical symbol for water?": "H2O",
+    "Who wrote 'Hamlet'?": "William Shakespeare",
+    "What is the square root of 144?": "12"
+}
+
+# Function to get a random question and answer
+def random_question():
+    question = random.choice(list(qa_bank.keys()))
+    answer = qa_bank[question]
+    return question, answer
+
+# Example usage
+if __name__ == "__main__":
+    for _ in range(5):  # generate 5 random Q&As
+        q, a = random_question()
+        print(f"Q: {q}")
+        print(f"A: {a}\n")
