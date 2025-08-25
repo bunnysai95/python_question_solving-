@@ -72,3 +72,211 @@ if __name__ == "__main__":
         q, a = random_question()
         print(f"Q: {q}")
         print(f"A: {a}\n")
+        
+        
+# task_manager.py
+
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base, relationship, Session
+from datetime import datetime
+
+# ---------------------------
+# Database setup
+# ---------------------------
+DATABASE_URL = "sqlite:///./tasks.db"
+
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+# ---------------------------
+# Models
+# ---------------------------
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+
+    tasks = relationship("Task", back_populates="owner")
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, index=True)
+    description = Column(String)
+    completed = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+    owner_id = Column(Integer, ForeignKey("users.id"))
+    owner = relationship("User", back_populates="tasks")
+
+
+# Create tables
+Base.metadata.create_all(bind=engine)
+
+# ---------------------------
+# Pydantic Schemas
+# ---------------------------
+class TaskBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    completed: Optional[bool] = False
+
+
+class TaskCreate(TaskBase):
+    pass
+
+
+class TaskUpdate(TaskBase):
+    completed: Optional[bool] = None
+
+
+class TaskOut(TaskBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    owner_id: int
+
+    class Config:
+        orm_mode = True
+
+
+class UserBase(BaseModel):
+    username: str
+    email: str
+
+
+class UserCreate(UserBase):
+    pass
+
+
+class UserOut(UserBase):
+    id: int
+    tasks: List[TaskOut] = []
+
+    class Config:
+        orm_mode = True
+
+# ---------------------------
+# Dependency
+# ---------------------------
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# ---------------------------
+# FastAPI app
+# ---------------------------
+app = FastAPI(title="Task Manager API", version="1.0")
+
+# Enable CORS for testing
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ---------------------------
+# Routes - Users
+# ---------------------------
+@app.post("/users/", response_model=UserOut)
+def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.username == user.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    db_email = db.query(User).filter(User.email == user.email).first()
+    if db_email:
+        raise HTTPException(status_code=400, detail="Email already exists")
+
+    new_user = User(username=user.username, email=user.email)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+
+@app.get("/users/", response_model=List[UserOut])
+def get_users(db: Session = Depends(get_db)):
+    return db.query(User).all()
+
+
+@app.get("/users/{user_id}", response_model=UserOut)
+def get_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+# ---------------------------
+# Routes - Tasks
+# ---------------------------
+@app.post("/users/{user_id}/tasks/", response_model=TaskOut)
+def create_task(user_id: int, task: TaskCreate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    new_task = Task(
+        title=task.title,
+        description=task.description,
+        completed=task.completed,
+        owner_id=user_id,
+    )
+    db.add(new_task)
+    db.commit()
+    db.refresh(new_task)
+    return new_task
+
+
+@app.get("/tasks/", response_model=List[TaskOut])
+def get_tasks(db: Session = Depends(get_db)):
+    return db.query(Task).all()
+
+
+@app.get("/tasks/{task_id}", response_model=TaskOut)
+def get_task(task_id: int, db: Session = Depends(get_db)):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+
+@app.put("/tasks/{task_id}", response_model=TaskOut)
+def update_task(task_id: int, task_update: TaskUpdate, db: Session = Depends(get_db)):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    task.title = task_update.title or task.title
+    task.description = task_update.description or task.description
+    if task_update.completed is not None:
+        task.completed = task_update.completed
+    task.updated_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+@app.delete("/tasks/{task_id}")
+def delete_task(task_id: int, db: Session = Depends(get_db)):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    db.delete(task)
+    db.commit()
+    return {"detail": "Task deleted successfully"}
