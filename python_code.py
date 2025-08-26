@@ -41,3 +41,23 @@ def two_sum(nums, target):
         
 print(two_sum([2, 7, 11, 15], 9)) 
 
+def second_largest(nums):
+    # Handle case if list has less than 2 elements
+    if len(nums) < 2:
+        return None
+    
+    first = second = float('-inf')  # Initialize with very small numbers
+    
+    for num in nums:
+        if num > first:
+            second = first   # update second before updating first
+            first = num
+        elif first > num > second:
+            second = num
+    
+    return second if second != float('-inf') else None
+
+
+# Example usage
+nums = [12, 45, 2, 41, 31, 10]
+print(second_largest(nums))  # Output: 41
