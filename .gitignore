@@ -1,4 +1,9 @@
-
+# Environment variables
+.env
 # SQLite artifacts
 *.sqlite3
 *.sqlite3-*
+
+# Python cache
+__pycache__/
+*.py[cod]
