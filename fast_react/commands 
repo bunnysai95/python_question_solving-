@@ -2,3 +2,15 @@ pip install fastapi
 pip install tortoise-orm
 pip install uvicorn
 uvicorn app:app --reload
+-----------------------------------------
+node -v
+npm -v
+sudo apt-get update
+sudo apt-get install -y nodejs npm
+
+npx create-react-app react_app_name 
+npm start
+
+# install react router dom
+npm install --save react-router-dom   # for routing
+npm install react-bootstrap bootstrap   # for styling
