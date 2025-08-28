@@ -35,7 +35,11 @@ origins = [
 # add middleware 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=[
+        "https://ideal-guacamole-gr7v6w677qrh99rv-3000.app.github.dev",  # CRA
+        "https://ideal-guacamole-gr7v6w677qrh99rv-5173.app.github.dev",  # Vite (if you use it)
+        "https://*.app.github.dev",  # wildcard fallback for Codespaces (optional)
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

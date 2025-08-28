@@ -1,5 +1,6 @@
-import react from 'react'
-import {BrowserRouter as Router, Link, Route, Switch} from 'react-router-dom'
+// import react from 'react'
+import {BrowserRouter as Router, Route, Switch} from 'react-router-dom'
+// import { Link } from 'react-router-dom'
 import NavBar from './components/NavBar'
 import { ProductProvider } from './ProductContext'
 import ProductsTable from './components/ProductsTable'
@@ -8,6 +9,7 @@ import UpdateProduct from './components/UpdateProduct'
 import { UpdateProductContextProvider } from './UpdateProductContext'
 import { SupplierContextProvider } from './SupplierContext'
 import SupplierPage from './components/SupplierPage'
+
 
 function App() {
   return (
