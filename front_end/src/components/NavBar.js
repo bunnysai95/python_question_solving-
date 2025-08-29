@@ -1,60 +1,40 @@
-import { useContext, useState } from "react";
-import {
-  Navbar, Nav, Form, FormControl, Button, Badge, InputGroup, Container
-} from "react-bootstrap";
-import { Link } from "react-router-dom";
-import { ProductContext } from "../ProductContext";
+import react, {useContext, useState} from "react"
+import { Navbar, Nav, Form, FormControl, Button, Badge } from 'react-bootstrap'
+import { Link } from 'react-router-dom'
+import {ProductContext} from '../ProductContext'
 
-export default function NavBar() {
-  const [search, setSearch] = useState("");
-  const [products, setProducts] =
-    useContext(ProductContext) ?? [{ data: [] }, () => {}];
 
-  const count = Array.isArray(products?.data) ? products.data.length : 0;
+const NavBar = () => {
+    const [search, setSearch] = useState("")
+    const [products, setProducts] = useContext(ProductContext)
 
-  const filterProduct = (e) => {
-    e.preventDefault();
-    const q = search.trim().toLowerCase();
-    if (!q) return;
-    const base = Array.isArray(products?.data) ? products.data : [];
-    const filtered = base.filter(p =>
-      String(p?.name ?? "").toLowerCase().includes(q)
+    const updateSearch = (e) => {
+        setSearch(e.target.value)
+    }
+
+    const filterProduct = (e) => {
+        e.preventDefault()
+        const product = products.data.filter(product => product.name.toLowerCase() === search.toLowerCase())
+        setProducts({"data" : [...product]})
+    }
+
+    return (
+        <Navbar bg="dark" expand="lg" variant="dark">
+            <Navbar.Brand href="#home">Inventory Management App</Navbar.Brand>
+            <Navbar.Toggle aria-controls="basic-navbar-nav" />
+            <Navbar.Collapse id="basic-navbar-nav">
+                <Nav className="mr-auto">            
+                    <Badge className="mt-2" variant="primary">Products In stock { products.data.length}</Badge>
+                </Nav>
+                <Form onSubmit={ filterProduct } inline>
+                        <Link to="/addproduct" className="btn btn-primary btn-sm mr-4">Add Product</Link>
+                        <FormControl value = {search} onChange={updateSearch} type="text" placeholder="Search" className="mr-sm-2" />
+                <Button type="submit"  variant="outline-primary">Search</Button>
+                </Form>
+            </Navbar.Collapse>
+        </Navbar>
+
     );
-    setProducts({ data: filtered });
-  };
-
-  return (
-    <Navbar bg="dark" variant="dark" expand="lg" className="mb-3">
-      <Container fluid>
-        <Navbar.Brand as={Link} to="/">Inventory Management App</Navbar.Brand>
-
-        <Navbar.Toggle aria-controls="topbar" />
-        <Navbar.Collapse id="topbar">
-          <Nav className="me-auto align-items-center">
-            <Badge bg="primary" className="ms-2">
-              Products In stock {count}
-            </Badge>
-          </Nav>
-
-          <Form onSubmit={filterProduct} className="d-flex align-items-center">
-            <Button as={Link} to="/addproduct" size="sm" className="me-3">
-              Add Product
-            </Button>
-
-            <InputGroup className="flex-nowrap">
-              <FormControl
-                placeholder="Search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="me-2"
-                style={{ width: 280 }}
-              />
-              {/* In v2, put the button directly after FormControl */}
-              <Button type="submit" variant="outline-primary">Search</Button>
-            </InputGroup>
-          </Form>
-        </Navbar.Collapse>
-      </Container>
-    </Navbar>
-  );
 }
+
+export default NavBar;

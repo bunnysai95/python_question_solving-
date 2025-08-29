@@ -1,4 +1,4 @@
-import { useState, createContext } from 'react'
+import react, { useState, createContext } from 'react'
 
 export const ProductContext = createContext();
 
@@ -12,3 +12,4 @@ export const ProductProvider = (props) => {
         </ProductContext.Provider>
     );
 }
+
