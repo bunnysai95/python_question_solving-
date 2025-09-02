@@ -1,0 +1,22 @@
+npm create vite@latest login-form -- --template react
+cd login-form
+npm install
+npm run dev # vite react app bulding 
+npm i react-router-dom  # installing router 
+--------------------------------------------------
+fastapi package install 
+pip install fastapi uvicorn[standard] tortoise-orm passlib[bcrypt] python-jose[cryptography] pydantic-settings python-dotenv
+
+
+curl -X POST http://localhost:8000/api/register \
+  -H "Content-Type: application/json" \
+  -d '{"firstName":"Sai","lastName":"Mateti","dob":"1995-01-01","username":"sai_pranay","password":"Abcd!234","confirmPassword":"Abcd!234","phone":"+1 (555) 123-4567"}'
+
+---------------------------------------------------------
+curl -X POST http://localhost:8000/api/login \ 
+  -H "Content-Type: application/json" \
+  -d '{"username":"sai_pranay","password":"Abcd!234"}'
+{"access_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzYWlfcHJhbmF5IiwiaWF0IjoxNzU2NzgyNzY0LCJleHAiOjE3NTY3ODk5NjR9.U4XHTg9Dpq3u9G1yjkJrHfNogiC4gcfYj6b6ZHVuSoM","token_type":"bearer"}
+------------------------------------------------------------
+TOKEN=<paste_access_token_here>
+curl http://localhost:8000/api/me -H "Authorization: Bearer $TOKEN"
