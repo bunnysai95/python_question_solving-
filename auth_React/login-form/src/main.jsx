@@ -5,7 +5,9 @@ import App from "./App.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import Profile from "./pages/Profile.jsx";
 import "./index.css";
+
 
 function RequireAuth({ children }) {
   const token = localStorage.getItem("access_token");
@@ -27,6 +29,14 @@ const router = createBrowserRouter([
           </RequireAuth>
         ),
       },
+      {
+    path: "profile",
+    element: (
+    <RequireAuth>
+      <Profile />
+    </RequireAuth>
+  ),
+  },
     ],
   },
 ]);

@@ -130,3 +130,39 @@ kbd {
 .below-cta { margin-top: .75rem; font-size: .9rem; color: var(--muted); }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
 @media (max-width: 520px) { .grid-2 { grid-template-columns: 1fr; } }
+
+
+/* Country dropdown */
+.dropdown { position: relative; }
+.dropdown-input { cursor: pointer; }
+
+.dropdown-list {
+  display: none;                  /* hidden by default */
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow: auto;
+  background: rgba(17,24,39,0.98);    /* dark card */
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: .6rem;
+  padding: .25rem;
+  margin: 0;
+  list-style: none;               /* remove bullets */
+}
+
+.dropdown:hover .dropdown-list,
+.dropdown:focus-within .dropdown-list {
+  display: block;                 /* show on hover or focus */
+}
+
+.dropdown-list li {
+  padding: .5rem .6rem;
+  border-radius: .4rem;
+  cursor: pointer;
+}
+.dropdown-list li:hover {
+  background: rgba(255,255,255,0.08);
+}

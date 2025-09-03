@@ -14,6 +14,7 @@ const LoginSchema = z.object({
 });
 
 const API_URL = import.meta.env?.VITE_API_URL ?? "http://localhost:8000";
+// console.log("API_URL from vite =", API_URL);
 
 export default function Login() {
   const navigate = useNavigate();            // ✅ add here
@@ -34,6 +35,7 @@ export default function Login() {
 
   async function onSubmit(values) {
     setMessage("");
+    console.log("POST ->", `${API_URL}/api/login`, values.username);
     try {
       const res = await fetch(`${API_URL}/api/login`, {
         method: "POST",

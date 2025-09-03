@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 const API_URL = import.meta.env?.VITE_API_URL ?? "http://localhost:8000";
 
@@ -25,12 +26,22 @@ export default function Dashboard() {
     <>
       <h1 className="title">Hi {me.firstName} 👋</h1>
       <p className="subtitle">You’re signed in as <strong>{me.username}</strong></p>
-      <button
-        className="btn"
-        onClick={() => { localStorage.removeItem("access_token"); window.location.href = "/"; }}
-      >
-        Log out
-      </button>
+
+      {/* new block */}
+      <div className="grid-2" style={{ marginTop: "1rem" }}>
+        <Link to="/profile" className="btn" style={{ textAlign: "center" }}>
+          Complete profile
+        </Link>
+        <button
+          className="btn"
+          onClick={() => {
+            localStorage.removeItem("access_token");
+            window.location.href = "/";
+          }}
+        >
+          Log out
+        </button>
+      </div>
     </>
   );
 }

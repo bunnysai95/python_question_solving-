@@ -42,3 +42,18 @@ class MeOut(BaseModel):
     username: str
     firstName: str
     lastName: str
+
+class ProfileOut(BaseModel):
+    id: int
+    username: str
+    firstName: str
+    lastName: str
+    dob: date
+    gender: str
+    phone: str | None = None
+    address: str
+    pincode: str
+    country: str
+    aboutMe: str
+    filePath: str | None = None
+    model_config = ConfigDict(from_attributes=True)
