@@ -7,8 +7,9 @@ npm i react-router-dom  # installing router
 fastapi package install 
 pip install fastapi uvicorn[standard] tortoise-orm passlib[bcrypt] python-jose[cryptography] pydantic-settings python-dotenv
 pip install openai anyio
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
+uvicorn main:app --reload --host 0.0.0.0 --port 8000    # to run at specific port number and run command 
+pip install -U pytest httpx pytest-cov   # command for test case 
+ 
 
 curl -X POST http://localhost:8000/api/register \
   -H "Content-Type: application/json" \
