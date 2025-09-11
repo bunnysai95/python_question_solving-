@@ -6,6 +6,7 @@ import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Profile from "./pages/Profile.jsx";
+import Chat from "./pages/Chat.jsx";
 import "./index.css";
 
 
@@ -30,16 +31,25 @@ const router = createBrowserRouter([
         ),
       },
       {
-    path: "profile",
-    element: (
-    <RequireAuth>
-      <Profile />
-    </RequireAuth>
-  ),
-  },
+        path: "profile",
+        element: (
+          <RequireAuth>
+            <Profile />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "chat",
+        element: (
+          <RequireAuth>
+            <Chat />
+          </RequireAuth>
+        ),
+      },
     ],
   },
 ]);
+
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

@@ -1,6 +1,8 @@
 # schemas.py
 from datetime import date
 from pydantic import BaseModel, Field, ConfigDict, model_validator
+#  chatbot -----import list
+from typing import List,Literal
 
 # ---- REGISTER ----
 class RegisterIn(BaseModel):
@@ -57,3 +59,15 @@ class ProfileOut(BaseModel):
     aboutMe: str
     filePath: str | None = None
     model_config = ConfigDict(from_attributes=True)
+
+#  ------- chatbot schemas -----
+
+class ChatMessage(BaseModel):
+    role: Literal["system", "user", "assistant"]
+    content: str
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+
+class ChatResponse(BaseModel):
+    reply: str

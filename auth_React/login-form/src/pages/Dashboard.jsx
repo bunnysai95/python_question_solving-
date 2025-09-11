@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router-dom"; // ✅ keep only this import
 
 const API_URL = import.meta.env?.VITE_API_URL ?? "http://localhost:8000";
 
@@ -27,11 +27,17 @@ export default function Dashboard() {
       <h1 className="title">Hi {me.firstName} 👋</h1>
       <p className="subtitle">You’re signed in as <strong>{me.username}</strong></p>
 
-      {/* new block */}
+      {/* buttons */}
       <div className="grid-2" style={{ marginTop: "1rem" }}>
         <Link to="/profile" className="btn" style={{ textAlign: "center" }}>
           Complete profile
         </Link>
+
+        {/* 👇 add this chat link */}
+        <Link to="/chat" className="btn" style={{ textAlign: "center" }}>
+          Open chat
+        </Link>
+
         <button
           className="btn"
           onClick={() => {

@@ -15,5 +15,9 @@ class Settings(BaseSettings):
     DB_URL: str = "sqlite://db.sqlite3"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    #  chatbot-----
+    CHAT_PROVIDER: str = "groq"       # "groq" | "ollama" | "echo"
+    GROQ_API_KEY: str | None = None
+    GROQ_MODEL: str = "llama3-70b-8192" 
 
 settings = Settings()

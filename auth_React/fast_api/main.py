@@ -5,8 +5,12 @@ from tortoise.contrib.fastapi import register_tortoise
 
 from settings import settings
 from models import User, Profile
-from schemas import RegisterIn, UserOut, LoginIn, TokenOut, MeOut, ProfileOut
+from schemas import RegisterIn, UserOut, LoginIn, TokenOut, MeOut, ProfileOut, ChatRequest, ChatResponse
 from security import hash_password, verify_password, create_access_token, get_current_username
+# for chatbot-----
+import asyncio
+from typing import List
+
 
 # forms after login page 
 from typing import Literal
@@ -165,3 +169,29 @@ async def create_profile(
         aboutMe=p.about_me,
         filePath=p.file_path,
     )
+
+
+# ---- Chat provider (echo fallback or Groq) ----
+async def generate_reply(messages: List[dict]) -> str:
+    prov = settings.CHAT_PROVIDER.lower()
+    if prov == "groq" and settings.GROQ_API_KEY:
+        from groq import Groq
+        client = Groq(api_key=settings.GROQ_API_KEY)
+        def _call():
+            return client.chat.completions.create(
+                model=settings.GROQ_MODEL, messages=messages, temperature=0.7
+            ).choices[0].message.content
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _call)
+
+    # fallback echo
+    last_user = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+    return "Echo: " + last_user
+
+@app.post("/api/chat", response_model=ChatResponse)   # ⬅️ THIS is the route your UI calls
+async def chat(req: ChatRequest, current_username: str = Depends(get_current_username)):
+    print("Using provider:", settings.CHAT_PROVIDER)   # optional debug
+    full_messages = [{"role": "system", "content": "You are a helpful assistant."}]
+    full_messages += [m.model_dump() for m in req.messages]
+    reply = await generate_reply(full_messages)
+    return ChatResponse(reply=reply)
