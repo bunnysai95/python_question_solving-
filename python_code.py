@@ -420,3 +420,83 @@ def knapsack(values, weights, W):
         for w in range(W, weights[i] - 1, -1):
             dp[w] = max(dp[w], dp[w - weights[i]] + values[i])
     return dp[W]
+    
+
+# 1) Palindrome check (string)
+# Time: O(n), Space: O(1)
+def is_palindrome(s):
+    return s == s[::-1]
+
+# 2) Anagram check
+# Time: O(n log n) if using sort, O(n) with counter
+def are_anagrams(s1, s2):
+    return sorted(s1) == sorted(s2)
+
+# 3) Two Sum (find if two numbers add up to target)
+# Time: O(n), Space: O(n)
+def two_sum(nums, target):
+    seen = {}
+    for i, num in enumerate(nums):
+        if target - num in seen:
+            return [seen[target - num], i]
+        seen[num] = i
+    return None
+
+# 4) BFS (Breadth-First Search) on graph
+# Time: O(V + E), Space: O(V)
+from collections import deque
+def bfs(graph, start):
+    visited = set([start])
+    q = deque([start])
+    order = []
+    while q:
+        node = q.popleft()
+        order.append(node)
+        for neighbor in graph[node]:
+            if neighbor not in visited:
+                visited.add(neighbor)
+                q.append(neighbor)
+    return order
+
+# 5) DFS (Depth-First Search) on graph
+# Time: O(V + E), Space: O(V)
+def dfs(graph, start, visited=None):
+    if visited is None:
+        visited = set()
+    visited.add(start)
+    for neighbor in graph[start]:
+        if neighbor not in visited:
+            dfs(graph, neighbor, visited)
+    return visited
+
+# 6) Binary Tree Traversals
+class Node:
+    def __init__(self, val):
+        self.val = val
+        self.left = None
+        self.right = None
+
+# Inorder Traversal (L, Root, R)
+# Time: O(n), Space: O(h) (h = tree height)
+def inorder(root):
+    return inorder(root.left) + [root.val] + inorder(root.right) if root else []
+
+# Preorder Traversal (Root, L, R)
+def preorder(root):
+    return [root.val] + preorder(root.left) + preorder(root.right) if root else []
+
+# Postorder Traversal (L, R, Root)
+def postorder(root):
+    return postorder(root.left) + postorder(root.right) + [root.val] if root else []
+
+# 7) Find factorial (recursive and iterative)
+# Recursive: O(n), Iterative: O(n)
+def factorial_recursive(n):
+    return 1 if n == 0 else n * factorial_recursive(n-1)
+
+def factorial_iterative(n):
+    result = 1
+    for i in range(2, n+1):
+        result *= i
+    return result
+    
