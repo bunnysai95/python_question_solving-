@@ -500,3 +500,334 @@ def factorial_iterative(n):
         result *= i
     return result
     
+        
+
+    
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Top IT Cities Scoring & Explorer (self-contained)
+- 25 U.S. tech/IT cities with illustrative metrics
+- Rank with custom weights (salary, cost-of-living, growth, postings, remote, ecosystem)
+- Filter by state, thresholds; export CSV/JSON; optional bar chart
+Usage examples:
+  python it_cities.py --top 15
+  python it_cities.py --w-salary 2.0 --w-col -1.5 --w-growth 1.2 --plot --top 12
+  python it_cities.py --state TX --min-salary 70 --max-col 115 --export out.csv --export-json out.json
+Note: Metrics are illustrative indices to let you practice ranking/analysis.
+"""
+
+from dataclasses import dataclass, asdict
+from typing import List, Dict, Any, Optional, Tuple
+import argparse
+import math
+import csv
+import json
+import sys
+import shutil
+import statistics
+from pathlib import Path
+
+# Optional plotting (no seaborn; single-plot rule; avoid explicit colors)
+try:
+    import matplotlib.pyplot as plt
+    MATPLOTLIB_OK = True
+except Exception:
+    MATPLOTLIB_OK = False
+
+
+@dataclass
+class City:
+    name: str
+    state: str
+    # Indices (roughly 0-100+). Higher is better except cost_of_living.
+    # These are illustrative synthetic values for demo/learning.
+    salary_index: float          # higher = better pay
+    cost_of_living_index: float  # lower = cheaper
+    postings_index: float        # relative job postings/activity
+    growth_index: float          # recent/near-term growth momentum
+    remote_share_index: float    # remote-friendly roles share
+    ecosystem_index: float       # startups, VCs, R&D, anchor companies
+
+CITIES: List[City] = [
+    City("San Francisco", "CA", 100, 175, 92, 78, 68, 98),
+    City("San Jose", "CA", 99, 170, 80, 75, 60, 97),
+    City("New York", "NY", 95, 165, 96, 70, 62, 94),
+    City("Seattle", "WA", 96, 150, 88, 74, 66, 93),
+    City("Washington DC", "DC", 91, 150, 84, 72, 58, 90),
+    City("Austin", "TX", 88, 120, 83, 88, 70, 89),
+    City("Boston", "MA", 92, 145, 82, 73, 57, 92),
+    City("Dallas–Fort Worth", "TX", 86, 115, 85, 77, 56, 84),
+    City("Denver", "CO", 85, 125, 74, 79, 63, 83),
+    City("Raleigh–Durham", "NC", 83, 110, 70, 82, 55, 82),
+    City("Atlanta", "GA", 84, 112, 78, 80, 54, 81),
+    City("San Diego", "CA", 87, 140, 69, 68, 52, 80),
+    City("Charlotte", "NC", 82, 108, 68, 76, 50, 78),
+    City("Miami", "FL", 81, 125, 72, 74, 59, 79),
+    City("Baltimore", "MD", 79, 120, 63, 65, 48, 74),
+    City("Houston", "TX", 83, 113, 76, 66, 49, 75),
+    City("Philadelphia", "PA", 80, 120, 67, 63, 47, 73),
+    City("Los Angeles", "CA", 88, 150, 79, 67, 58, 86),
+    City("Plano", "TX", 81, 110, 66, 70, 46, 72),
+    City("Jersey City", "NJ", 83, 135, 65, 60, 51, 76),
+    City("Pittsburgh", "PA", 77, 105, 57, 62, 44, 70),
+    City("Phoenix", "AZ", 79, 108, 71, 73, 53, 74),
+    City("Chicago", "IL", 85, 120, 90, 69, 61, 88),
+    City("San Antonio", "TX", 76, 105, 60, 64, 45, 69),
+    City("Columbus", "OH", 80, 104, 64, 78, 52, 77),
+]
+
+def zscore(values: List[float]) -> List[float]:
+    if len(values) <= 1:
+        return [0.0 for _ in values]
+    mean = statistics.fmean(values)
+    stdev = statistics.pstdev(values)
+    if stdev == 0:
+        return [0.0 for _ in values]
+    return [(v - mean) / stdev for v in values]
+
+def minmax(values: List[float]) -> List[float]:
+    lo, hi = min(values), max(values)
+    if hi == lo:
+        return [0.5 for _ in values]
+    return [(v - lo) / (hi - lo) for v in values]
+
+def normalize_city_metrics(cities: List[City], method: str = "z") -> Dict[str, Dict[str, float]]:
+    """Return normalized metrics per city keyed by city name."""
+    metrics = {
+        "salary_index": [c.salary_index for c in cities],
+        "cost_of_living_index": [c.cost_of_living_index for c in cities],
+        "postings_index": [c.postings_index for c in cities],
+        "growth_index": [c.growth_index for c in cities],
+        "remote_share_index": [c.remote_share_index for c in cities],
+        "ecosystem_index": [c.ecosystem_index for c in cities],
+    }
+    normed = {}
+    normalizer = zscore if method == "z" else minmax
+    normed_metrics: Dict[str, List[float]] = {k: normalizer(v) for k, v in metrics.items()}
+
+    # Invert cost-of-living (lower is better -> higher normalized score)
+    if method == "z":
+        normed_metrics["cost_of_living_index"] = [-x for x in normed_metrics["cost_of_living_index"]]
+    else:
+        # minmax 0(lowest COL) -> 1(highest COL), invert to make lower COL better
+        normed_metrics["cost_of_living_index"] = [1 - x for x in normed_metrics["cost_of_living_index"]]
+
+    for i, c in enumerate(cities):
+        normed[c.name] = {
+            "salary": normed_metrics["salary_index"][i],
+            "col": normed_metrics["cost_of_living_index"][i],
+            "postings": normed_metrics["postings_index"][i],
+            "growth": normed_metrics["growth_index"][i],
+            "remote": normed_metrics["remote_share_index"][i],
+            "ecosys": normed_metrics["ecosystem_index"][i],
+        }
+    return normed
+
+def compute_scores(
+    cities: List[City],
+    w_salary: float = 1.0,
+    w_col: float = 1.0,
+    w_growth: float = 1.0,
+    w_postings: float = 1.0,
+    w_remote: float = 0.6,
+    w_ecosys: float = 1.0,
+    norm: str = "z"
+) -> List[Tuple[City, float, Dict[str, float]]]:
+    normed = normalize_city_metrics(cities, method=norm)
+    results = []
+    for c in cities:
+        nm = normed[c.name]
+        score = (
+            w_salary * nm["salary"] +
+            w_col * nm["col"] +
+            w_growth * nm["growth"] +
+            w_postings * nm["postings"] +
+            w_remote * nm["remote"] +
+            w_ecosys * nm["ecosys"]
+        )
+        results.append((c, score, nm))
+    results.sort(key=lambda x: x[1], reverse=True)
+    return results
+
+def tabulate_rows(rows: List[List[Any]], headers: List[str]) -> str:
+    """
+    Simple table printer (no external deps).
+    Falls back to reasonable spacing based on terminal width.
+    """
+    # Compute column widths
+    cols = list(zip(*([headers] + rows)))
+    widths = [max(len(str(cell)) for cell in col) for col in cols]
+    def fmt_row(r): return " | ".join(str(cell).ljust(w) for cell, w in zip(r, widths))
+    sep = "-+-".join("-" * w for w in widths)
+    parts = [fmt_row(headers), sep]
+    parts.extend(fmt_row(r) for r in rows)
+    return "\n".join(parts)
+
+def export_csv(path: Path, ranked: List[Tuple[City, float, Dict[str, float]]]) -> None:
+    with path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            "rank", "city", "state", "score",
+            "salary_index", "cost_of_living_index", "postings_index",
+            "growth_index", "remote_share_index", "ecosystem_index",
+            "norm_salary", "norm_col", "norm_postings", "norm_growth", "norm_remote", "norm_ecosys"
+        ])
+        for i, (c, score, nm) in enumerate(ranked, start=1):
+            writer.writerow([
+                i, c.name, c.state, round(score, 4),
+                c.salary_index, c.cost_of_living_index, c.postings_index,
+                c.growth_index, c.remote_share_index, c.ecosystem_index,
+                round(nm["salary"], 4), round(nm["col"], 4), round(nm["postings"], 4),
+                round(nm["growth"], 4), round(nm["remote"], 4), round(nm["ecosys"], 4)
+            ])
+
+def export_json(path: Path, ranked: List[Tuple[City, float, Dict[str, float]]]) -> None:
+    data = []
+    for i, (c, score, nm) in enumerate(ranked, start=1):
+        row = {
+            "rank": i,
+            "city": c.name,
+            "state": c.state,
+            "score": score,
+            "metrics": asdict(c),
+            "normalized": nm,
+        }
+        data.append(row)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+def plot_bar(ranked: List[Tuple[City, float, Dict[str, float]]], top: int) -> None:
+    if not MATPLOTLIB_OK:
+        print("Plotting skipped: matplotlib not available.", file=sys.stderr)
+        return
+    topn = ranked[:top]
+    labels = [f"{c.name}, {c.state}" for c, _, _ in topn]
+    scores = [s for _, s, _ in topn]
+    plt.figure(figsize=(12, 6))
+    plt.barh(labels, scores)                # no explicit colors/styles
+    plt.gca().invert_yaxis()                 # highest on top
+    plt.xlabel("Composite Score (higher is better)")
+    plt.title(f"Top {top} IT Cities — Composite Score")
+    plt.tight_layout()
+    plt.show()
+
+def filter_cities(
+    cities: List[City],
+    state: Optional[str] = None,
+    min_salary: Optional[float] = None,
+    max_col: Optional[float] = None,
+    min_growth: Optional[float] = None,
+    min_postings: Optional[float] = None,
+    min_remote: Optional[float] = None,
+    min_ecosys: Optional[float] = None,
+) -> List[City]:
+    res = []
+    for c in cities:
+        if state and c.state.upper() != state.upper():
+            continue
+        if min_salary is not None and c.salary_index < min_salary:
+            continue
+        if max_col is not None and c.cost_of_living_index > max_col:
+            continue
+        if min_growth is not None and c.growth_index < min_growth:
+            continue
+        if min_postings is not None and c.postings_index < min_postings:
+            continue
+        if min_remote is not None and c.remote_share_index < min_remote:
+            continue
+        if min_ecosys is not None and c.ecosystem_index < min_ecosys:
+            continue
+        res.append(c)
+    return res
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Rank and explore U.S. IT cities.")
+    p.add_argument("--top", type=int, default=25, help="How many results to show (default: 25)")
+    p.add_argument("--state", type=str, help="Filter by 2-letter state (e.g., TX, CA)")
+    p.add_argument("--min-salary", type=float, help="Minimum salary index filter")
+    p.add_argument("--max-col", type=float, help="Maximum cost-of-living index filter")
+    p.add_argument("--min-growth", type=float, help="Minimum growth index filter")
+    p.add_argument("--min-postings", type=float, help="Minimum postings index filter")
+    p.add_argument("--min-remote", type=float, help="Minimum remote-share index filter")
+    p.add_argument("--min-ecosys", type=float, help="Minimum ecosystem index filter")
+
+    # Weights (positive = more important; negative flips preference)
+    p.add_argument("--w-salary", type=float, default=1.0, help="Weight for salary (default 1.0)")
+    p.add_argument("--w-col", type=float, default=1.0, help="Weight for cost-of-living (default 1.0; higher favors cheaper places)")
+    p.add_argument("--w-growth", type=float, default=1.0, help="Weight for growth momentum (default 1.0)")
+    p.add_argument("--w-postings", type=float, default=1.0, help="Weight for job postings/activity (default 1.0)")
+    p.add_argument("--w-remote", type=float, default=0.6, help="Weight for remote share (default 0.6)")
+    p.add_argument("--w-ecosys", type=float, default=1.0, help="Weight for ecosystem depth (default 1.0)")
+
+    p.add_argument("--norm", choices=["z", "minmax"], default="z", help="Normalization scheme (default: z)")
+    p.add_argument("--export", type=str, help="Export ranked results to CSV file")
+    p.add_argument("--export-json", type=str, help="Export ranked results to JSON file")
+    p.add_argument("--plot", action="store_true", help="Show bar chart of scores (requires matplotlib)")
+    return p.parse_args()
+
+def main():
+    args = parse_args()
+
+    # Filter dataset
+    filtered = filter_cities(
+        CITIES,
+        state=args.state,
+        min_salary=args.min_salary,
+        max_col=args.max_col,
+        min_growth=args.min_growth,
+        min_postings=args.min_postings,
+        min_remote=args.min_remote,
+        min_ecosys=args.min_ecosys,
+    )
+
+    if not filtered:
+        print("No cities matched your filter criteria.", file=sys.stderr)
+        sys.exit(1)
+
+    ranked = compute_scores(
+        filtered,
+        w_salary=args.w_salary,
+        w_col=args.w_col,
+        w_growth=args.w_growth,
+        w_postings=args.w_postings,
+        w_remote=args.w_remote,
+        w_ecosys=args.w_ecosys,
+        norm=args.norm
+    )
+
+    top = max(1, min(args.top, len(ranked)))
+
+    # Prepare rows for printing
+    rows = []
+    for i, (c, score, nm) in enumerate(ranked[:top], start=1):
+        rows.append([
+            i,
+            f"{c.name}, {c.state}",
+            round(score, 3),
+            c.salary_index,
+            c.cost_of_living_index,
+            c.postings_index,
+            c.growth_index,
+            c.remote_share_index,
+            c.ecosystem_index,
+        ])
+
+    headers = ["Rank", "City", "Score", "SalaryIdx", "COLIdx", "PostingsIdx", "GrowthIdx", "RemoteIdx", "EcosysIdx"]
+    print(tabulate_rows(rows, headers))
+
+    # Exports
+    if args.export:
+        export_csv(Path(args.export), ranked)
+        print(f"\nCSV exported to: {args.export}")
+
+    if args.export_json:
+        export_json(Path(args.export_json), ranked)
+        print(f"JSON exported to: {args.export_json}")
+
+    # Plot
+    if args.plot:
+        plot_bar(ranked, top=top)
+
+if __name__ == "__main__":
+    main()
