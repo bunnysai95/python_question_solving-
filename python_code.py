@@ -992,6 +992,145 @@ if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
+import os
+import json
+import time
+import random
+import asyncio
+import logging
+import threading
+from typing import List, Dict
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 
+# ------------------------- CONFIG & LOGGING -------------------------
+logging.basicConfig(
+    filename="app.log",
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s]: %(message)s"
+)
+
+CONFIG_FILE = "config.json"
+
+# ------------------------- CONFIG MANAGER -------------------------
+class ConfigManager:
+    """Loads and saves application configuration."""
+
+    def __init__(self, path: str):
+        self.path = path
+        self.config = self.load_config()
+
+    def load_config(self) -> Dict:
+        if os.path.exists(self.path):
+            with open(self.path, 'r') as file:
+                logging.info("Loaded existing config.")
+                return json.load(file)
+        else:
+            logging.warning("No config found. Using default.")
+            return {"version": 1.0, "theme": "dark", "users": []}
+
+    def save_config(self):
+        with open(self.path, 'w') as file:
+            json.dump(self.config, file, indent=4)
+        logging.info("Config saved successfully.")
+
+# ------------------------- USER MODEL -------------------------
+class User:
+    """Represents a system user."""
+
+    def __init__(self, username: str, email: str):
+        self.username = username
+        self.email = email
+        self.created_at = datetime.now()
+
+    def to_dict(self) -> Dict:
+        return {
+            "username": self.username,
+            "email": self.email,
+            "created_at": self.created_at.isoformat()
+        }
+
+# ------------------------- USER SERVICE -------------------------
+class UserService:
+    """Handles user creation, retrieval, and persistence."""
+
+    def __init__(self, config_manager: ConfigManager):
+        self.config_manager = config_manager
+
+    def add_user(self, username: str, email: str):
+        user = User(username, email)
+        self.config_manager.config["users"].append(user.to_dict())
+        self.config_manager.save_config()
+        logging.info(f"User {username} added.")
+
+    def list_users(self) -> List[Dict]:
+        return self.config_manager.config.get("users", [])
+
+# ------------------------- ASYNC API SIMULATION -------------------------
+async def fake_api_call(user: Dict) -> Dict:
+    """Simulates an async API call."""
+    await asyncio.sleep(random.uniform(0.5, 2.0))
+    logging.info(f"Fetched data for {user['username']}")
+    return {"username": user["username"], "data": random.randint(1, 100)}
+
+async def fetch_all_users_data(users: List[Dict]):
+    """Fetches data for all users asynchronously."""
+    tasks = [fake_api_call(user) for user in users]
+    results = await asyncio.gather(*tasks)
+    logging.info("All user data fetched.")
+    return results
+
+# ------------------------- THREADING EXAMPLE -------------------------
+def background_task(name: str):
+    """Runs a background computation."""
+    logging.info(f"Background task {name} started.")
+    time.sleep(random.randint(1, 4))
+    logging.info(f"Background task {name} completed.")
+
+def run_background_tasks():
+    threads = []
+    for i in range(3):
+        t = threading.Thread(target=background_task, args=(f"Task-{i}",))
+        threads.append(t)
+        t.start()
+    for t in threads:
+        t.join()
+    logging.info("All background tasks done.")
+
+# ------------------------- MAIN APP -------------------------
+class App:
+    """Main application orchestrating all components."""
+
+    def __init__(self):
+        self.config_manager = ConfigManager(CONFIG_FILE)
+        self.user_service = UserService(self.config_manager)
+
+    def run(self):
+        # Add random users
+        for i in range(5):
+            self.user_service.add_user(f"user{i}", f"user{i}@example.com")
+
+        # List users
+        users = self.user_service.list_users()
+        print("Registered Users:")
+        for u in users:
+            print(f"- {u['username']} ({u['email']})")
+
+        # Run background tasks in parallel
+        print("\nRunning background tasks...")
+        run_background_tasks()
+
+        # Fetch async data
+        print("\nFetching async data for all users...")
+        results = asyncio.run(fetch_all_users_data(users))
+        print("API Results:")
+        for r in results:
+            print(f"{r['username']}: {r['data']}")
+
+# ------------------------- ENTRY POINT -------------------------
+if __name__ == "__main__":
+    app = App()
+    app.run()
+    print("\nAll operations completed. Check app.log for details.")
 
 
