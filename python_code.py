@@ -1133,4 +1133,73 @@ if __name__ == "__main__":
     app.run()
     print("\nAll operations completed. Check app.log for details.")
 
+from __future__ import annotations
+from flask import Flask, jsonify, request
 
+app = Flask(__name__)
+
+SUPPORTED_OPS = {"add", "sub", "mul", "div"}
+
+def _validate_payload(data: dict):
+    if not isinstance(data, dict):
+        return "Request body must be a JSON object."
+    op = data.get("operation")
+    operands = data.get("operands")
+
+    if op not in SUPPORTED_OPS:
+        return f"Invalid 'operation'. Choose one of {sorted(SUPPORTED_OPS)}."
+
+    if not isinstance(operands, list) or len(operands) < 2:
+        return "'operands' must be a list of at least two numbers."
+
+    for i, v in enumerate(operands):
+        if not isinstance(v, (int, float)):
+            return f"Operand at index {i} is not a number."
+
+    if op == "div" and any(o == 0 for o in operands[1:]):
+        return "Division by zero is not allowed."
+
+    return None  # no errors
+
+def _compute(op: str, operands: list[float]) -> float:
+    it = iter(operands)
+    result = next(it)
+    for v in it:
+        if op == "add":
+            result += v
+        elif op == "sub":
+            result -= v
+        elif op == "mul":
+            result *= v
+        elif op == "div":
+            result /= v
+    return result
+
+@app.get("/health")
+def health():
+    return jsonify(status="ok"), 200
+
+@app.post("/calculate")
+def calculate():
+    try:
+        data = request.get_json(silent=True)
+        error = _validate_payload(data)
+        if error:
+            return jsonify(error=error), 400
+
+        op = data["operation"]
+        operands = data["operands"]
+        result = _compute(op, operands)
+
+        return jsonify(
+            operation=op,
+            operands=operands,
+            result=result
+        ), 200
+    except Exception as exc:
+        # Fallback error (won't leak internals)
+        return jsonify(error="Internal server error."), 500
+
+if __name__ == "__main__":
+    # For local dev only. Prefer a proper WSGI server (e.g., gunicorn) in prod.
+    app.run(host="0.0.0.0", port=8000, debug=True)
