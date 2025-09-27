@@ -1203,3 +1203,208 @@ def calculate():
 if __name__ == "__main__":
     # For local dev only. Prefer a proper WSGI server (e.g., gunicorn) in prod.
     app.run(host="0.0.0.0", port=8000, debug=True)
+
+import os
+import shutil
+import json
+import threading
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+from datetime import datetime
+
+# ============================================================
+#  CONFIGURATION
+# ============================================================
+
+DEFAULT_CONFIG = {
+    "Images": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".svg"],
+    "Videos": [".mp4", ".mkv", ".flv", ".avi", ".mov"],
+    "Documents": [".pdf", ".docx", ".doc", ".txt", ".pptx", ".xlsx", ".csv"],
+    "Audio": [".mp3", ".wav", ".aac", ".flac", ".ogg"],
+    "Archives": [".zip", ".tar", ".gz", ".rar", ".7z"],
+    "Scripts": [".py", ".js", ".java", ".c", ".cpp", ".sh", ".rb"],
+    "Installers": [".exe", ".msi", ".deb", ".pkg", ".dmg"],
+    "Others": []
+}
+
+CONFIG_FILE = "organizer_config.json"
+LOG_FILE = "organizer_log.txt"
+
+
+# ============================================================
+#  UTILITIES
+# ============================================================
+
+def log_message(message):
+    """Log messages with timestamp to console and a log file."""
+    timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+    final_message = f"{timestamp} {message}"
+    print(final_message)
+    with open(LOG_FILE, "a", encoding="utf-8") as log:
+        log.write(final_message + "\n")
+
+
+def load_config():
+    """Load file type configuration from JSON, or create a default one."""
+    if not os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(DEFAULT_CONFIG, f, indent=4)
+        log_message("✅ Default config created.")
+        return DEFAULT_CONFIG
+
+    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+        log_message("✅ Config loaded successfully.")
+        return json.load(f)
+
+
+# ============================================================
+#  FILE ORGANIZER LOGIC
+# ============================================================
+
+class FileOrganizer:
+    def __init__(self, directory, config):
+        self.directory = directory
+        self.config = config
+
+    def organize(self, progress_callback=None):
+        """Organize files in the specified directory."""
+        if not os.path.exists(self.directory):
+            raise FileNotFoundError("The specified directory does not exist.")
+
+        files = [f for f in os.listdir(self.directory) if os.path.isfile(os.path.join(self.directory, f))]
+        total_files = len(files)
+        processed_files = 0
+
+        log_message(f"📁 Starting organization in: {self.directory}")
+
+        for filename in files:
+            file_path = os.path.join(self.directory, filename)
+            _, ext = os.path.splitext(filename)
+            ext = ext.lower()
+
+            target_category = "Others"
+            for category, extensions in self.config.items():
+                if ext in extensions:
+                    target_category = category
+                    break
+
+            target_folder = os.path.join(self.directory, target_category)
+            os.makedirs(target_folder, exist_ok=True)
+
+            new_file_path = os.path.join(target_folder, filename)
+            base, extension = os.path.splitext(filename)
+            counter = 1
+            while os.path.exists(new_file_path):
+                new_file_path = os.path.join(target_folder, f"{base}_{counter}{extension}")
+                counter += 1
+
+            shutil.move(file_path, new_file_path)
+            processed_files += 1
+            log_message(f"✅ Moved: {filename} → {target_category}/")
+
+            if progress_callback:
+                progress_callback(processed_files, total_files)
+
+        log_message("🎉 File organization completed successfully!")
+        return total_files
+
+
+# ============================================================
+#  GUI APPLICATION
+# ============================================================
+
+class OrganizerApp(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("📁 Advanced File Organizer")
+        self.geometry("650x500")
+        self.config = load_config()
+        self.selected_dir = tk.StringVar()
+
+        self.create_widgets()
+
+    def create_widgets(self):
+        ttk.Label(self, text="📁 Select a folder to organize:", font=("Helvetica", 14)).pack(pady=20)
+
+        # Directory selection
+        frame = ttk.Frame(self)
+        frame.pack(pady=10)
+        ttk.Entry(frame, textvariable=self.selected_dir, width=50).pack(side=tk.LEFT, padx=5)
+        ttk.Button(frame, text="Browse", command=self.browse_directory).pack(side=tk.LEFT)
+
+        # Start button
+        ttk.Button(self, text="Start Organizing", command=self.start_organizing).pack(pady=15)
+
+        # Progress bar
+        self.progress_var = tk.DoubleVar()
+        self.progress_bar = ttk.Progressbar(self, variable=self.progress_var, maximum=100)
+        self.progress_bar.pack(fill=tk.X, padx=30, pady=15)
+
+        # Log area
+        self.log_area = tk.Text(self, height=15, width=70, state="disabled", bg="#f8f8f8")
+        self.log_area.pack(pady=15)
+
+        # Menu Bar
+        menubar = tk.Menu(self)
+        self.config_menu = tk.Menu(menubar, tearoff=0)
+        self.config_menu.add_command(label="View Config", command=self.show_config)
+        self.config_menu.add_command(label="Open Log", command=self.open_log)
+        menubar.add_cascade(label="Options", menu=self.config_menu)
+        self.config(menu=menubar)
+
+    def browse_directory(self):
+        directory = filedialog.askdirectory()
+        if directory:
+            self.selected_dir.set(directory)
+
+    def start_organizing(self):
+        directory = self.selected_dir.get().strip()
+        if not directory:
+            messagebox.showwarning("Warning", "Please select a directory first!")
+            return
+
+        self.log_area.configure(state="normal")
+        self.log_area.delete(1.0, tk.END)
+        self.log_area.configure(state="disabled")
+
+        thread = threading.Thread(target=self.run_organizer, args=(directory,))
+        thread.start()
+
+    def run_organizer(self, directory):
+        organizer = FileOrganizer(directory, self.config)
+
+        def progress_callback(done, total):
+            self.progress_var.set((done / total) * 100)
+            self.update_idletasks()
+
+        try:
+            total_files = organizer.organize(progress_callback=progress_callback)
+            self.append_log(f"🎉 Completed organizing {total_files} files.")
+        except Exception as e:
+            self.append_log(f"❌ Error: {e}")
+            messagebox.showerror("Error", str(e))
+
+    def append_log(self, text):
+        self.log_area.configure(state="normal")
+        self.log_area.insert(tk.END, f"{text}\n")
+        self.log_area.configure(state="disabled")
+        self.log_area.see(tk.END)
+
+    def show_config(self):
+        config_text = json.dumps(self.config, indent=4)
+        messagebox.showinfo("Current Configuration", config_text)
+
+    def open_log(self):
+        if os.path.exists(LOG_FILE):
+            os.system(f"notepad {LOG_FILE}" if os.name == "nt" else f"open {LOG_FILE}")
+        else:
+            messagebox.showinfo("Info", "No log file found yet.")
+
+
+# ============================================================
+#  MAIN ENTRY POINT
+# ============================================================
+
+if __name__ == "__main__":
+    app = OrganizerApp()
+    app.mainloop()
