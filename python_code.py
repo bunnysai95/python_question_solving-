@@ -1408,3 +1408,714 @@ class OrganizerApp(tk.Tk):
 if __name__ == "__main__":
     app = OrganizerApp()
     app.mainloop()
+
+
+#!/usr/bin/env python3
+"""
+Comprehensive Library Management System
+A complete library management application with user management, book operations,
+search functionality, data persistence, and reporting features.
+"""
+
+import json
+import datetime
+import uuid
+import os
+from typing import List, Dict, Optional, Union
+from dataclasses import dataclass, asdict
+from enum import Enum
+import hashlib
+import re
+
+
+class UserRole(Enum):
+    """Enumeration for user roles in the system."""
+    ADMIN = "admin"
+    LIBRARIAN = "librarian"
+    MEMBER = "member"
+
+
+class BookStatus(Enum):
+    """Enumeration for book availability status."""
+    AVAILABLE = "available"
+    CHECKED_OUT = "checked_out"
+    RESERVED = "reserved"
+    MAINTENANCE = "maintenance"
+
+
+@dataclass
+class Book:
+    """Book data class representing a library book."""
+    isbn: str
+    title: str
+    author: str
+    publisher: str
+    publication_year: int
+    genre: str
+    pages: int
+    language: str
+    status: BookStatus = BookStatus.AVAILABLE
+    book_id: str = None
+    copies_total: int = 1
+    copies_available: int = 1
+    location: str = "A-001"
+    summary: str = ""
+    
+    def __post_init__(self):
+        if not self.book_id:
+            self.book_id = str(uuid.uuid4())
+    
+    def to_dict(self) -> Dict:
+        """Convert book to dictionary format."""
+        data = asdict(self)
+        data['status'] = self.status.value
+        return data
+    
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'Book':
+        """Create book instance from dictionary."""
+        data['status'] = BookStatus(data['status'])
+        return cls(**data)
+
+
+@dataclass
+class User:
+    """User data class representing library users."""
+    username: str
+    email: str
+    first_name: str
+    last_name: str
+    role: UserRole
+    user_id: str = None
+    password_hash: str = ""
+    phone: str = ""
+    address: str = ""
+    registration_date: str = None
+    is_active: bool = True
+    max_books: int = 5
+    
+    def __post_init__(self):
+        if not self.user_id:
+            self.user_id = str(uuid.uuid4())
+        if not self.registration_date:
+            self.registration_date = datetime.datetime.now().isoformat()
+    
+    def set_password(self, password: str):
+        """Hash and set user password."""
+        self.password_hash = hashlib.sha256(password.encode()).hexdigest()
+    
+    def verify_password(self, password: str) -> bool:
+        """Verify user password."""
+        return self.password_hash == hashlib.sha256(password.encode()).hexdigest()
+    
+    def to_dict(self) -> Dict:
+        """Convert user to dictionary format."""
+        data = asdict(self)
+        data['role'] = self.role.value
+        return data
+    
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'User':
+        """Create user instance from dictionary."""
+        data['role'] = UserRole(data['role'])
+        return cls(**data)
+
+
+@dataclass
+class Transaction:
+    """Transaction data class for book checkout/return operations."""
+    transaction_id: str
+    user_id: str
+    book_id: str
+    transaction_type: str  # 'checkout', 'return', 'reserve'
+    transaction_date: str
+    due_date: str = None
+    return_date: str = None
+    fine_amount: float = 0.0
+    notes: str = ""
+    
+    def __post_init__(self):
+        if not self.transaction_id:
+            self.transaction_id = str(uuid.uuid4())
+    
+    def calculate_fine(self) -> float:
+        """Calculate overdue fine for the transaction."""
+        if self.due_date and not self.return_date:
+            due = datetime.datetime.fromisoformat(self.due_date)
+            now = datetime.datetime.now()
+            if now > due:
+                overdue_days = (now - due).days
+                return overdue_days * 0.50  # $0.50 per day
+        return 0.0
+
+
+class DatabaseManager:
+    """Handles data persistence and file operations."""
+    
+    def __init__(self, data_directory: str = "library_data"):
+        self.data_dir = data_directory
+        self.books_file = os.path.join(data_directory, "books.json")
+        self.users_file = os.path.join(data_directory, "users.json")
+        self.transactions_file = os.path.join(data_directory, "transactions.json")
+        self._ensure_directory_exists()
+    
+    def _ensure_directory_exists(self):
+        """Create data directory if it doesn't exist."""
+        if not os.path.exists(self.data_dir):
+            os.makedirs(self.data_dir)
+    
+    def save_books(self, books: List[Book]):
+        """Save books list to JSON file."""
+        data = [book.to_dict() for book in books]
+        with open(self.books_file, 'w') as f:
+            json.dump(data, f, indent=2)
+    
+    def load_books(self) -> List[Book]:
+        """Load books list from JSON file."""
+        if not os.path.exists(self.books_file):
+            return []
+        try:
+            with open(self.books_file, 'r') as f:
+                data = json.load(f)
+            return [Book.from_dict(book_data) for book_data in data]
+        except (json.JSONDecodeError, KeyError):
+            return []
+    
+    def save_users(self, users: List[User]):
+        """Save users list to JSON file."""
+        data = [user.to_dict() for user in users]
+        with open(self.users_file, 'w') as f:
+            json.dump(data, f, indent=2)
+    
+    def load_users(self) -> List[User]:
+        """Load users list from JSON file."""
+        if not os.path.exists(self.users_file):
+            return []
+        try:
+            with open(self.users_file, 'r') as f:
+                data = json.load(f)
+            return [User.from_dict(user_data) for user_data in data]
+        except (json.JSONDecodeError, KeyError):
+            return []
+    
+    def save_transactions(self, transactions: List[Transaction]):
+        """Save transactions list to JSON file."""
+        data = [asdict(transaction) for transaction in transactions]
+        with open(self.transactions_file, 'w') as f:
+            json.dump(data, f, indent=2)
+    
+    def load_transactions(self) -> List[Transaction]:
+        """Load transactions list from JSON file."""
+        if not os.path.exists(self.transactions_file):
+            return []
+        try:
+            with open(self.transactions_file, 'r') as f:
+                data = json.load(f)
+            return [Transaction(**transaction_data) for transaction_data in data]
+        except (json.JSONDecodeError, KeyError):
+            return []
+
+
+class SearchEngine:
+    """Advanced search functionality for books and users."""
+    
+    @staticmethod
+    def search_books(books: List[Book], query: str, search_type: str = "all") -> List[Book]:
+        """
+        Search books by various criteria.
+        
+        Args:
+            books: List of books to search
+            query: Search query string
+            search_type: Type of search ('title', 'author', 'isbn', 'genre', 'all')
+        
+        Returns:
+            List of matching books
+        """
+        query = query.lower().strip()
+        results = []
+        
+        for book in books:
+            match = False
+            
+            if search_type in ["all", "title"] and query in book.title.lower():
+                match = True
+            elif search_type in ["all", "author"] and query in book.author.lower():
+                match = True
+            elif search_type in ["all", "isbn"] and query in book.isbn.lower():
+                match = True
+            elif search_type in ["all", "genre"] and query in book.genre.lower():
+                match = True
+            elif search_type == "publisher" and query in book.publisher.lower():
+                match = True
+            elif search_type == "year" and query == str(book.publication_year):
+                match = True
+            
+            if match:
+                results.append(book)
+        
+        return results
+    
+    @staticmethod
+    def search_users(users: List[User], query: str, search_type: str = "all") -> List[User]:
+        """
+        Search users by various criteria.
+        
+        Args:
+            users: List of users to search
+            query: Search query string
+            search_type: Type of search ('name', 'email', 'username', 'all')
+        
+        Returns:
+            List of matching users
+        """
+        query = query.lower().strip()
+        results = []
+        
+        for user in users:
+            match = False
+            
+            if search_type in ["all", "name"]:
+                full_name = f"{user.first_name} {user.last_name}".lower()
+                if query in full_name:
+                    match = True
+            
+            if search_type in ["all", "email"] and query in user.email.lower():
+                match = True
+            
+            if search_type in ["all", "username"] and query in user.username.lower():
+                match = True
+            
+            if match:
+                results.append(user)
+        
+        return results
+
+
+class ValidationService:
+    """Service for validating user input and data integrity."""
+    
+    @staticmethod
+    def validate_email(email: str) -> bool:
+        """Validate email format."""
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return re.match(pattern, email) is not None
+    
+    @staticmethod
+    def validate_isbn(isbn: str) -> bool:
+        """Validate ISBN format (10 or 13 digits)."""
+        isbn = isbn.replace('-', '').replace(' ', '')
+        return len(isbn) in [10, 13] and isbn.isdigit()
+    
+    @staticmethod
+    def validate_phone(phone: str) -> bool:
+        """Validate phone number format."""
+        phone = re.sub(r'[^\d]', '', phone)
+        return len(phone) >= 10
+    
+    @staticmethod
+    def validate_year(year: int) -> bool:
+        """Validate publication year."""
+        current_year = datetime.datetime.now().year
+        return 1000 <= year <= current_year + 1
+
+
+class ReportGenerator:
+    """Generate various reports and statistics."""
+    
+    def __init__(self, books: List[Book], users: List[User], transactions: List[Transaction]):
+        self.books = books
+        self.users = users
+        self.transactions = transactions
+    
+    def generate_book_statistics(self) -> Dict:
+        """Generate comprehensive book statistics."""
+        total_books = len(self.books)
+        available_books = sum(1 for book in self.books if book.status == BookStatus.AVAILABLE)
+        checked_out_books = sum(1 for book in self.books if book.status == BookStatus.CHECKED_OUT)
+        
+        genres = {}
+        authors = {}
+        years = {}
+        
+        for book in self.books:
+            genres[book.genre] = genres.get(book.genre, 0) + 1
+            authors[book.author] = authors.get(book.author, 0) + 1
+            years[book.publication_year] = years.get(book.publication_year, 0) + 1
+        
+        return {
+            "total_books": total_books,
+            "available_books": available_books,
+            "checked_out_books": checked_out_books,
+            "reserved_books": sum(1 for book in self.books if book.status == BookStatus.RESERVED),
+            "maintenance_books": sum(1 for book in self.books if book.status == BookStatus.MAINTENANCE),
+            "top_genres": sorted(genres.items(), key=lambda x: x[1], reverse=True)[:10],
+            "top_authors": sorted(authors.items(), key=lambda x: x[1], reverse=True)[:10],
+            "publication_years": dict(sorted(years.items(), reverse=True)[:10])
+        }
+    
+    def generate_user_statistics(self) -> Dict:
+        """Generate comprehensive user statistics."""
+        total_users = len(self.users)
+        active_users = sum(1 for user in self.users if user.is_active)
+        
+        role_counts = {}
+        for user in self.users:
+            role_counts[user.role.value] = role_counts.get(user.role.value, 0) + 1
+        
+        return {
+            "total_users": total_users,
+            "active_users": active_users,
+            "inactive_users": total_users - active_users,
+            "role_distribution": role_counts,
+            "registration_this_month": self._count_recent_registrations()
+        }
+    
+    def generate_transaction_report(self, days: int = 30) -> Dict:
+        """Generate transaction report for specified period."""
+        cutoff_date = datetime.datetime.now() - datetime.timedelta(days=days)
+        recent_transactions = [
+            t for t in self.transactions 
+            if datetime.datetime.fromisoformat(t.transaction_date) >= cutoff_date
+        ]
+        
+        checkouts = [t for t in recent_transactions if t.transaction_type == 'checkout']
+        returns = [t for t in recent_transactions if t.transaction_type == 'return']
+        reservations = [t for t in recent_transactions if t.transaction_type == 'reserve']
+        
+        total_fines = sum(t.fine_amount for t in self.transactions if t.fine_amount > 0)
+        overdue_books = self._get_overdue_books()
+        
+        return {
+            "period_days": days,
+            "total_transactions": len(recent_transactions),
+            "checkouts": len(checkouts),
+            "returns": len(returns),
+            "reservations": len(reservations),
+            "total_fines_collected": total_fines,
+            "overdue_books": len(overdue_books),
+            "most_popular_books": self._get_popular_books(checkouts)
+        }
+    
+    def _count_recent_registrations(self) -> int:
+        """Count user registrations in the current month."""
+        current_month = datetime.datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        count = 0
+        for user in self.users:
+            reg_date = datetime.datetime.fromisoformat(user.registration_date)
+            if reg_date >= current_month:
+                count += 1
+        return count
+    
+    def _get_overdue_books(self) -> List[Transaction]:
+        """Get list of overdue book transactions."""
+        overdue = []
+        for transaction in self.transactions:
+            if (transaction.transaction_type == 'checkout' and 
+                not transaction.return_date and 
+                transaction.due_date):
+                due_date = datetime.datetime.fromisoformat(transaction.due_date)
+                if datetime.datetime.now() > due_date:
+                    overdue.append(transaction)
+        return overdue
+    
+    def _get_popular_books(self, checkouts: List[Transaction]) -> List[tuple]:
+        """Get most popular books based on checkout frequency."""
+        book_counts = {}
+        for checkout in checkouts:
+            book_counts[checkout.book_id] = book_counts.get(checkout.book_id, 0) + 1
+        
+        # Convert book IDs to book titles
+        book_popularity = []
+        for book_id, count in book_counts.items():
+            book = next((b for b in self.books if b.book_id == book_id), None)
+            if book:
+                book_popularity.append((book.title, count))
+        
+        return sorted(book_popularity, key=lambda x: x[1], reverse=True)[:10]
+
+
+class LibraryManagementSystem:
+    """Main library management system class."""
+    
+    def __init__(self):
+        self.db_manager = DatabaseManager()
+        self.books: List[Book] = self.db_manager.load_books()
+        self.users: List[User] = self.db_manager.load_users()
+        self.transactions: List[Transaction] = self.db_manager.load_transactions()
+        self.current_user: Optional[User] = None
+        
+        # Initialize with default admin user if no users exist
+        if not self.users:
+            self._create_default_admin()
+    
+    def _create_default_admin(self):
+        """Create default admin user."""
+        admin = User(
+            username="admin",
+            email="admin@library.com",
+            first_name="System",
+            last_name="Administrator",
+            role=UserRole.ADMIN
+        )
+        admin.set_password("admin123")
+        self.users.append(admin)
+        self.save_data()
+    
+    def save_data(self):
+        """Save all data to files."""
+        self.db_manager.save_books(self.books)
+        self.db_manager.save_users(self.users)
+        self.db_manager.save_transactions(self.transactions)
+    
+    def authenticate_user(self, username: str, password: str) -> bool:
+        """Authenticate user login."""
+        user = self.find_user_by_username(username)
+        if user and user.verify_password(password) and user.is_active:
+            self.current_user = user
+            return True
+        return False
+    
+    def logout(self):
+        """Logout current user."""
+        self.current_user = None
+    
+    def add_book(self, book: Book) -> bool:
+        """Add a new book to the library."""
+        if not self._has_permission("add_book"):
+            return False
+        
+        # Check if book already exists by ISBN
+        existing = self.find_book_by_isbn(book.isbn)
+        if existing:
+            existing.copies_total += book.copies_total
+            existing.copies_available += book.copies_available
+        else:
+            self.books.append(book)
+        
+        self.save_data()
+        return True
+    
+    def remove_book(self, book_id: str) -> bool:
+        """Remove a book from the library."""
+        if not self._has_permission("remove_book"):
+            return False
+        
+        book = self.find_book_by_id(book_id)
+        if book:
+            self.books.remove(book)
+            self.save_data()
+            return True
+        return False
+    
+    def add_user(self, user: User) -> bool:
+        """Add a new user to the system."""
+        if not self._has_permission("add_user"):
+            return False
+        
+        # Check for duplicate username/email
+        if self.find_user_by_username(user.username) or self.find_user_by_email(user.email):
+            return False
+        
+        self.users.append(user)
+        self.save_data()
+        return True
+    
+    def checkout_book(self, user_id: str, book_id: str, days: int = 14) -> bool:
+        """Checkout a book to a user."""
+        user = self.find_user_by_id(user_id)
+        book = self.find_book_by_id(book_id)
+        
+        if not user or not book or book.copies_available <= 0:
+            return False
+        
+        # Check user's current checkout limit
+        current_checkouts = self._get_user_active_checkouts(user_id)
+        if len(current_checkouts) >= user.max_books:
+            return False
+        
+        # Create checkout transaction
+        due_date = datetime.datetime.now() + datetime.timedelta(days=days)
+        transaction = Transaction(
+            transaction_id=str(uuid.uuid4()),
+            user_id=user_id,
+            book_id=book_id,
+            transaction_type="checkout",
+            transaction_date=datetime.datetime.now().isoformat(),
+            due_date=due_date.isoformat()
+        )
+        
+        book.copies_available -= 1
+        if book.copies_available == 0:
+            book.status = BookStatus.CHECKED_OUT
+        
+        self.transactions.append(transaction)
+        self.save_data()
+        return True
+    
+    def return_book(self, transaction_id: str) -> bool:
+        """Return a checked out book."""
+        transaction = next((t for t in self.transactions if t.transaction_id == transaction_id), None)
+        
+        if not transaction or transaction.return_date:
+            return False
+        
+        book = self.find_book_by_id(transaction.book_id)
+        if book:
+            book.copies_available += 1
+            if book.status == BookStatus.CHECKED_OUT and book.copies_available > 0:
+                book.status = BookStatus.AVAILABLE
+        
+        transaction.return_date = datetime.datetime.now().isoformat()
+        transaction.fine_amount = transaction.calculate_fine()
+        
+        self.save_data()
+        return True
+    
+    def search_books(self, query: str, search_type: str = "all") -> List[Book]:
+        """Search books using the search engine."""
+        return SearchEngine.search_books(self.books, query, search_type)
+    
+    def search_users(self, query: str, search_type: str = "all") -> List[User]:
+        """Search users using the search engine."""
+        if not self._has_permission("search_users"):
+            return []
+        return SearchEngine.search_users(self.users, query, search_type)
+    
+    def generate_reports(self) -> Dict:
+        """Generate comprehensive system reports."""
+        if not self._has_permission("view_reports"):
+            return {}
+        
+        reporter = ReportGenerator(self.books, self.users, self.transactions)
+        return {
+            "book_statistics": reporter.generate_book_statistics(),
+            "user_statistics": reporter.generate_user_statistics(),
+            "transaction_report": reporter.generate_transaction_report()
+        }
+    
+    def find_book_by_id(self, book_id: str) -> Optional[Book]:
+        """Find book by ID."""
+        return next((book for book in self.books if book.book_id == book_id), None)
+    
+    def find_book_by_isbn(self, isbn: str) -> Optional[Book]:
+        """Find book by ISBN."""
+        return next((book for book in self.books if book.isbn == isbn), None)
+    
+    def find_user_by_id(self, user_id: str) -> Optional[User]:
+        """Find user by ID."""
+        return next((user for user in self.users if user.user_id == user_id), None)
+    
+    def find_user_by_username(self, username: str) -> Optional[User]:
+        """Find user by username."""
+        return next((user for user in self.users if user.username == username), None)
+    
+    def find_user_by_email(self, email: str) -> Optional[User]:
+        """Find user by email."""
+        return next((user for user in self.users if user.email == email), None)
+    
+    def _get_user_active_checkouts(self, user_id: str) -> List[Transaction]:
+        """Get active checkout transactions for a user."""
+        return [
+            t for t in self.transactions 
+            if t.user_id == user_id and t.transaction_type == 'checkout' and not t.return_date
+        ]
+    
+    def _has_permission(self, action: str) -> bool:
+        """Check if current user has permission for action."""
+        if not self.current_user:
+            return False
+        
+        permissions = {
+            UserRole.ADMIN: ["add_book", "remove_book", "add_user", "search_users", "view_reports"],
+            UserRole.LIBRARIAN: ["add_book", "search_users", "view_reports"],
+            UserRole.MEMBER: []
+        }
+        
+        return action in permissions.get(self.current_user.role, [])
+
+
+# Example usage and testing functions
+def demo_library_system():
+    """Demonstrate the library management system functionality."""
+    
+    # Initialize system
+    library = LibraryManagementSystem()
+    
+    # Login as admin
+    library.authenticate_user("admin", "admin123")
+    print("Logged in as admin")
+    
+    # Add sample books
+    books_data = [
+        {
+            "isbn": "9780132350884",
+            "title": "Clean Code",
+            "author": "Robert C. Martin",
+            "publisher": "Prentice Hall",
+            "publication_year": 2008,
+            "genre": "Programming",
+            "pages": 464,
+            "language": "English",
+            "summary": "A handbook of agile software craftsmanship"
+        },
+        {
+            "isbn": "9780134685991",
+            "title": "Effective Java",
+            "author": "Joshua Bloch",
+            "publisher": "Addison-Wesley",
+            "publication_year": 2018,
+            "genre": "Programming",
+            "pages": 416,
+            "language": "English",
+            "summary": "Best practices for Java programming"
+        }
+    ]
+    
+    for book_data in books_data:
+        book = Book(**book_data)
+        library.add_book(book)
+    
+    print(f"Added {len(books_data)} books to library")
+    
+    # Add sample user
+    user = User(
+        username="john_doe",
+        email="john@example.com",
+        first_name="John",
+        last_name="Doe",
+        role=UserRole.MEMBER
+    )
+    user.set_password("password123")
+    library.add_user(user)
+    print("Added sample user")
+    
+    # Search books
+    search_results = library.search_books("Clean", "title")
+    print(f"Search results for 'Clean': {len(search_results)} books found")
+    
+    # Generate reports
+    reports = library.generate_reports()
+    print("Generated system reports")
+    print(f"Total books: {reports['book_statistics']['total_books']}")
+    print(f"Total users: {reports['user_statistics']['total_users']}")
+    
+    return library
+
+
+if __name__ == "__main__":
+    # Run demo
+    system = demo_library_system()
+    print("\nLibrary Management System initialized successfully!")
+    print("Features included:")
+    print("- User authentication and role management")
+    print("- Book catalog management")
+    print("- Search and filtering")
+    print("- Checkout/return system")
+    print("- Transaction tracking")
+    print("- Report generation")
+    print("- Data persistence")
+    print("- Input validation")
+
+
+
