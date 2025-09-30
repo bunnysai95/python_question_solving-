@@ -2118,4 +2118,531 @@ if __name__ == "__main__":
     print("- Input validation")
 
 
+# app.py
+"""
+Single-file Task Manager API (FastAPI + SQLAlchemy + JWT)
+--------------------------------------------------------
+Features:
+- User registration & login (JWT Bearer)
+- Secure password hashing with bcrypt (passlib)
+- SQLite by default; set DATABASE_URL for PostgreSQL/MySQL/etc.
+- Task CRUD (create, read, update, delete)
+- Filtering (completed), searching (title/description), sorting, pagination
+- Includes /health and /version
+- CORS allowed for all origins (adjust for production)
 
+Env vars (optional):
+- DATABASE_URL (e.g., postgresql+psycopg2://user:pass@localhost:5432/taskdb)
+- SECRET_KEY
+- ACCESS_TOKEN_EXPIRE_MINUTES
+- APP_ENV (dev/prod)
+
+Run:
+    pip install fastapi "uvicorn[standard]" sqlalchemy pydantic[email] \
+        python-jose[cryptography] passlib[bcrypt] python-dotenv
+    python app.py
+    # Swagger UI at http://127.0.0.1:8000/docs
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+import secrets
+from datetime import datetime, timedelta, timezone
+from typing import Optional, List, Any, Generator
+
+from fastapi import (
+    FastAPI,
+    Depends,
+    HTTPException,
+    status,
+    Body,
+    Query,
+    Path,
+)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy import (
+    create_engine,
+    Column,
+    Integer,
+    String,
+    Boolean,
+    ForeignKey,
+    DateTime,
+    func,
+    Text,
+    asc,
+    desc,
+)
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship, Session
+from passlib.context import CryptContext
+from jose import jwt, JWTError
+
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except Exception:
+    # dotenv is optional
+    pass
+
+# ------------------------------------------------------------------------------
+# Configuration
+# ------------------------------------------------------------------------------
+APP_ENV = os.getenv("APP_ENV", "dev")
+DEFAULT_DB = "sqlite:///./taskdb.db"
+DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DB)
+
+# If using SQLite, enable check_same_thread=False
+# Note: SQLAlchemy URL for sqlite needs 'sqlite:///' prefix.
+connect_args = {}
+if DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
+SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+
+API_VERSION = "1.0.0"
+
+# ------------------------------------------------------------------------------
+# DB Setup
+# ------------------------------------------------------------------------------
+engine = create_engine(DATABASE_URL, echo=False, future=True, connect_args=connect_args)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+Base = declarative_base()
+
+
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# ------------------------------------------------------------------------------
+# Models
+# ------------------------------------------------------------------------------
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(128), unique=True, index=True, nullable=False)
+    email = Column(String(320), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    tasks = relationship("Task", back_populates="owner", cascade="all, delete-orphan")
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(256), index=True, nullable=False)
+    description = Column(Text, nullable=True)
+    completed = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    owner = relationship("User", back_populates="tasks")
+
+
+# ------------------------------------------------------------------------------
+# Security / Auth
+# ------------------------------------------------------------------------------
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
+
+
+def hash_password(plain: str) -> str:
+    return pwd_context.hash(plain)
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
+
+
+def create_access_token(sub: str, extra_claims: Optional[dict] = None) -> str:
+    to_encode = {"sub": sub, "iat": datetime.now(tz=timezone.utc)}
+    if extra_claims:
+        to_encode.update(extra_claims)
+    expire = datetime.now(tz=timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str | None = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise credentials_exception
+    return user
+
+
+# ------------------------------------------------------------------------------
+# Schemas (Pydantic)
+# ------------------------------------------------------------------------------
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class UserBase(BaseModel):
+    username: str = Field(..., min_length=3, max_length=128)
+    email: EmailStr
+
+
+class UserCreate(UserBase):
+    password: str = Field(..., min_length=6, max_length=128)
+
+
+class UserOut(UserBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TaskBase(BaseModel):
+    title: str = Field(..., min_length=1, max_length=256)
+    description: Optional[str] = None
+
+
+class TaskCreate(TaskBase):
+    completed: bool = False
+
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=256)
+    description: Optional[str] = None
+    completed: Optional[bool] = None
+
+
+class TaskOut(TaskBase):
+    id: int
+    completed: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    owner_id: int
+
+    class Config:
+        from_attributes = True
+
+
+# ------------------------------------------------------------------------------
+# CRUD helpers
+# ------------------------------------------------------------------------------
+def get_user_by_email(db: Session, email: str) -> Optional[User]:
+    return db.query(User).filter(User.email == email).first()
+
+
+def get_user_by_username(db: Session, username: str) -> Optional[User]:
+    return db.query(User).filter(User.username == username).first()
+
+
+def create_user(db: Session, payload: UserCreate) -> User:
+    if get_user_by_username(db, payload.username):
+        raise HTTPException(status_code=400, detail="Username already taken.")
+    if get_user_by_email(db, payload.email):
+        raise HTTPException(status_code=400, detail="Email already registered.")
+    db_user = User(
+        username=payload.username,
+        email=payload.email,
+        hashed_password=hash_password(payload.password),
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+def create_task_for_user(db: Session, owner_id: int, payload: TaskCreate) -> Task:
+    task = Task(
+        title=payload.title,
+        description=payload.description,
+        completed=payload.completed,
+        owner_id=owner_id,
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+def list_tasks_for_user(
+    db: Session,
+    owner_id: int,
+    completed: Optional[bool],
+    search: Optional[str],
+    sort_by: str,
+    sort_dir: str,
+    skip: int,
+    limit: int,
+) -> List[Task]:
+    q = db.query(Task).filter(Task.owner_id == owner_id)
+
+    if completed is not None:
+        q = q.filter(Task.completed == completed)
+
+    if search:
+        like = f"%{search}%"
+        q = q.filter((Task.title.ilike(like)) | (Task.description.ilike(like)))
+
+    # sorting
+    sort_map = {
+        "created_at": Task.created_at,
+        "updated_at": Task.updated_at,
+        "title": Task.title,
+        "id": Task.id,
+        "completed": Task.completed,
+    }
+    sort_col = sort_map.get(sort_by, Task.created_at)
+    q = q.order_by(asc(sort_col) if sort_dir.lower() == "asc" else desc(sort_col))
+
+    return q.offset(max(0, skip)).limit(max(1, min(limit, 100))).all()
+
+
+def get_task(db: Session, owner_id: int, task_id: int) -> Task:
+    task = db.query(Task).filter(Task.owner_id == owner_id, Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found.")
+    return task
+
+
+def update_task(db: Session, owner_id: int, task_id: int, payload: TaskUpdate) -> Task:
+    task = get_task(db, owner_id, task_id)
+    if payload.title is not None:
+        task.title = payload.title
+    if payload.description is not None:
+        task.description = payload.description
+    if payload.completed is not None:
+        task.completed = payload.completed
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+def delete_task(db: Session, owner_id: int, task_id: int) -> None:
+    task = get_task(db, owner_id, task_id)
+    db.delete(task)
+    db.commit()
+
+
+# ------------------------------------------------------------------------------
+# FastAPI app
+# ------------------------------------------------------------------------------
+app = FastAPI(title="Task Manager API (Single File)", version=API_VERSION)
+
+# CORS (adjust allow_origins for production)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Replace with your frontend origin(s)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ------------------------------------------------------------------------------
+# Startup / Health
+# ------------------------------------------------------------------------------
+@app.on_event("startup")
+def on_startup() -> None:
+    # Create tables if they don't exist
+    Base.metadata.create_all(bind=engine)
+
+
+@app.get("/", tags=["Meta"])
+def root() -> dict[str, Any]:
+    return {"message": "🚀 Task Manager API Running!", "docs": "/docs", "version": API_VERSION}
+
+
+@app.get("/health", tags=["Meta"])
+def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.get("/version", tags=["Meta"])
+def version() -> dict[str, str]:
+    return {"version": API_VERSION, "env": APP_ENV}
+
+
+# ------------------------------------------------------------------------------
+# Users & Auth Routes
+# ------------------------------------------------------------------------------
+@app.post("/users/register", response_model=UserOut, tags=["Users"])
+def register(user: UserCreate, db: Session = Depends(get_db)) -> UserOut:
+    created = create_user(db, user)
+    return created
+
+
+@app.post("/users/login", response_model=Token, tags=["Users"])
+def login(
+    db: Session = Depends(get_db),
+    form_data: OAuth2PasswordRequestForm = Depends(),
+) -> Token:
+    """
+    OAuth2 Password Grant login (x-www-form-urlencoded):
+    - username
+    - password
+    """
+    user = get_user_by_username(db, form_data.username)
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid username or password.")
+    token = create_access_token(sub=user.username)
+    return Token(access_token=token)
+
+
+@app.post("/users/login_json", response_model=Token, tags=["Users"])
+def login_json(
+    creds: dict = Body(..., example={"username": "alice", "password": "secret123"}),
+    db: Session = Depends(get_db),
+) -> Token:
+    """
+    JSON login convenience endpoint (useful for testing).
+    """
+    username = creds.get("username")
+    password = creds.get("password")
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="username and password required.")
+    user = get_user_by_username(db, username)
+    if not user or not verify_password(password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid username or password.")
+    token = create_access_token(sub=user.username)
+    return Token(access_token=token)
+
+
+@app.get("/users/me", response_model=UserOut, tags=["Users"])
+def whoami(current_user: User = Depends(get_current_user)) -> UserOut:
+    return current_user  # FastAPI will convert via from_attributes
+
+
+# ------------------------------------------------------------------------------
+# Task Routes
+# ------------------------------------------------------------------------------
+@app.post("/tasks", response_model=TaskOut, tags=["Tasks"])
+def create_task_endpoint(
+    payload: TaskCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TaskOut:
+    task = create_task_for_user(db, current_user.id, payload)
+    return task
+
+
+@app.get("/tasks", response_model=List[TaskOut], tags=["Tasks"])
+def list_tasks_endpoint(
+    completed: Optional[bool] = Query(None, description="Filter by completion status."),
+    search: Optional[str] = Query(None, description="Search in title/description."),
+    sort_by: str = Query("created_at", pattern="^(created_at|updated_at|title|id|completed)$"),
+    sort_dir: str = Query("desc", pattern="^(asc|desc)$"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(25, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> List[TaskOut]:
+    tasks = list_tasks_for_user(db, current_user.id, completed, search, sort_by, sort_dir, skip, limit)
+    return tasks
+
+
+@app.get("/tasks/{task_id}", response_model=TaskOut, tags=["Tasks"])
+def get_task_endpoint(
+    task_id: int = Path(..., ge=1),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TaskOut:
+    return get_task(db, current_user.id, task_id)
+
+
+@app.patch("/tasks/{task_id}", response_model=TaskOut, tags=["Tasks"])
+def update_task_endpoint(
+    task_id: int = Path(..., ge=1),
+    payload: TaskUpdate = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TaskOut:
+    return update_task(db, current_user.id, task_id, payload)
+
+
+@app.delete("/tasks/{task_id}", status_code=204, tags=["Tasks"])
+def delete_task_endpoint(
+    task_id: int = Path(..., ge=1),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    delete_task(db, current_user.id, task_id)
+    return None
+
+
+# ------------------------------------------------------------------------------
+# Development bootstrap (optional)
+# ------------------------------------------------------------------------------
+def _dev_bootstrap(db: Session) -> None:
+    """
+    Create a demo user & a couple of tasks when DB is empty (dev only).
+    """
+    if APP_ENV != "dev":
+        return
+    if db.query(User).count() == 0:
+        demo = create_user(
+            db,
+            UserCreate(username="demo", email="demo@example.com", password="password123"),
+        )
+        create_task_for_user(db, demo.id, TaskCreate(title="Read docs", description="Open /docs", completed=False))
+        create_task_for_user(db, demo.id, TaskCreate(title="Build feature", description="Implement tasks CRUD", completed=False))
+
+
+@app.on_event("startup")
+def maybe_bootstrap() -> None:
+    try:
+        db = SessionLocal()
+        _dev_bootstrap(db)
+    except Exception:
+        pass
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+# ------------------------------------------------------------------------------
+# Entrypoint
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+    # Allow: python app.py [host] [port]
+    host = "127.0.0.1"
+    port = 8000
+    if len(sys.argv) >= 2:
+        host = sys.argv[1]
+    if len(sys.argv) >= 3:
+        try:
+            port = int(sys.argv[2])
+        except ValueError:
+            pass
+
+    import uvicorn
+
+    uvicorn.run("app:app", host=host, port=port, reload=True)
