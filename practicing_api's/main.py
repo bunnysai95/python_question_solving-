@@ -260,7 +260,7 @@ register_tortoise(
     app,
     db_url = settings.DB_URL,
     modules = {"models":["models"]},
-    generate_schemas = True,
+    generate_schemas = T5rue,
     add_exception_handlers = True,
 )
 
@@ -270,6 +270,83 @@ UPLOAD_DIR = Path("upload")
 UPLOAD_DIR.mkdir(exists_ok = True)
 
 #profile creation
-@app.post()
-async def():
-    return ProfileOut()
+@app.post("/api/Profile", response_model = ProdileOut)
+async def create_profile(
+    firstname: str = Form(...),
+    lastname: str = Form(...),
+    dob: str = Form(...),
+    gender: Literal["male", "female"] = Form(...),
+    phone: str | None = Form(default = None),
+    address: str = Form(...),
+    pincode: str = Form(...),
+    country: str = Form(...),
+    aboutme: str = Form(...),
+    acknowledge: bool = Form(...),
+    file: UploadFile = File(...),
+    current_username: str = Depends(get_current_username)
+):
+
+    # server side validation
+    words = len([w for w in aboutme.strip().strip() if w])
+    if words <150:
+        raise HTTPEXception(status_code = 422 , detail = "about me must be at least 150 words ")
+    if not acknowledge:
+        rasie HTTPEXception(status_code= 422, detail = "you must acknoledge your info")
+    
+    #saving file here
+    ext = path(file.filename).suffix
+    fname = f"{uuid4().hex}_{_safe_filename(file.filename)}"
+    dest = UPLOADE_DIR / fname
+    content = await file.read()
+    with open(dest,"wb") as f:
+        f.write(content)
+    
+    #upsert create or upadte the profile 
+    user = awaite user.get_or_none(username = current_username)
+    if not user:
+        raise HTTPEXception(status_code = 404, detail = "user not found")
+    
+    from models import Profile
+    existing = await Profile.get_or_none(user= user)
+    if existing:
+        p = existing
+        p.first_name = firstName
+        p.last_name =  lastName
+        p.dob = dob
+        p.gender = gender
+        p.phone = phone
+        p.address = address
+        p.pincode = pincode 
+        p.country = country
+        p.about_me = aboutme
+        p.file_path = str(dest)
+        await p.save()
+    else:
+        p= await Profile.create(
+            user= user,
+            first_name = firsrname,
+            last_name = lastName,
+            dob = dob,
+            gender = gender,
+            phone = phone,
+            address = address,
+            pincode = pincode,
+            country = country,
+            about_me = aboutme,
+            file_path = str(dest)
+        )
+     
+    return ProfileOut(
+        id = p.id,
+        username = user.username,
+        firstName = p.first_name,
+        lastName = p.last_name,
+        dob = p.dob,
+        gender = p.gender,
+        phone = p.phone,
+        address = p.address,
+        pincode = p.pincode,
+        country = p.country,
+        aboutme = p.about_me,
+        filePath = p.file_path,
+    )
