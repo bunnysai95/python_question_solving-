@@ -5295,3 +5295,62 @@ if __name__ == "__main__":
 
     uvicorn.run("app:app", host=host, port=port, reload=True)
 
+
+
+import tkinter as tk
+from tkinter import messagebox
+import random
+import string
+
+def generate_password():
+    length = length_var.get()
+    if length <= 0:
+        messagebox.showerror("Error", "Password length must be greater than 0")
+        return
+
+    characters = ""
+    if use_upper.get():
+        characters += string.ascii_uppercase
+    if use_lower.get():
+        characters += string.ascii_lowercase
+    if use_digits.get():
+        characters += string.digits
+    if use_symbols.get():
+        characters += string.punctuation
+
+    if not characters:
+        messagebox.showerror("Error", "Please select at least one character type")
+        return
+
+    password = ''.join(random.choice(characters) for _ in range(length))
+    result_label.config(text=f"Generated Password:\n{password}")
+
+# GUI setup
+root = tk.Tk()
+root.title("Random Password Generator")
+root.geometry("400x350")
+root.resizable(False, False)
+
+tk.Label(root, text="Password Generator", font=("Arial", 16, "bold")).pack(pady=10)
+
+length_var = tk.IntVar(value=12)
+tk.Label(root, text="Password Length:").pack()
+tk.Entry(root, textvariable=length_var, width=10, justify="center").pack(pady=5)
+
+# Options
+use_upper = tk.BooleanVar(value=True)
+use_lower = tk.BooleanVar(value=True)
+use_digits = tk.BooleanVar(value=True)
+use_symbols = tk.BooleanVar(value=False)
+
+tk.Checkbutton(root, text="Include Uppercase Letters", variable=use_upper).pack(anchor="w", padx=40)
+tk.Checkbutton(root, text="Include Lowercase Letters", variable=use_lower).pack(anchor="w", padx=40)
+tk.Checkbutton(root, text="Include Numbers", variable=use_digits).pack(anchor="w", padx=40)
+tk.Checkbutton(root, text="Include Symbols", variable=use_symbols).pack(anchor="w", padx=40)
+
+tk.Button(root, text="Generate Password", command=generate_password, bg="#4CAF50", fg="white", padx=10, pady=5).pack(pady=15)
+
+result_label = tk.Label(root, text="", font=("Arial", 12))
+result_label.pack(pady=10)
+
+root.mainloop()
