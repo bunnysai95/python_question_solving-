@@ -9,7 +9,10 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 60
 
     # For dev with Vite
-    CORS_ORIGINS: list[str] = ["http://localhost:5173"]
+    CORS_ORIGINS: list[str] = [   "http://localhost:5173",
+                                  "http://127.0.0.1:5173" ,
+                                  "https://disreputable-spooky-apparition-654xw44xp3xwvr-5173.app.github.dev"
+                            ,]
 
     # SQLite for local dev. For Postgres, see the note at the bottom.
     DB_URL: str = "sqlite://db.sqlite3"

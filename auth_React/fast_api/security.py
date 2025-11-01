@@ -9,7 +9,7 @@ from passlib.context import CryptContext
 
 from settings import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 bearer_scheme = HTTPBearer()
 
 def hash_password(raw: str) -> str:

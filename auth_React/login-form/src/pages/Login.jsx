@@ -13,11 +13,12 @@ const LoginSchema = z.object({
     .regex(/[^A-Za-z0-9]/, "Include a special character"),
 });
 
-const API_URL = import.meta.env?.VITE_API_URL ?? "http://localhost:8000";
+const API_URL = import.meta.env?.VITE_API_URL ?? "http://localhost:8000/default";
 // console.log("API_URL from vite =", API_URL);
 
+
 export default function Login() {
-  const navigate = useNavigate();            // ✅ add here
+  const navigate = useNavigate();            
   const [showPw, setShowPw] = useState(false);
   const [message, setMessage] = useState("");
 

@@ -3,6 +3,8 @@ from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from tortoise.contrib.fastapi import register_tortoise
 
+
+
 from settings import settings
 from models import User, Profile
 from schemas import RegisterIn, UserOut, LoginIn, TokenOut, MeOut, ProfileOut, ChatRequest, ChatResponse
