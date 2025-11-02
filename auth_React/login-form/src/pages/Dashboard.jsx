@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom"; // ✅ keep only this import
 
-const API_URL = import.meta.env?.VITE_API_URL ?? "http://localhost:8000";
+import { api } from "../api";
 
 export default function Dashboard() {
   const [me, setMe] = useState(null);
@@ -11,7 +11,7 @@ export default function Dashboard() {
     const token = localStorage.getItem("access_token");
     if (!token) { setError("Not logged in"); return; }
 
-    fetch(`${API_URL}/api/me`, {
+  fetch(api("/api/me"), {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(async (r) => (r.ok ? setMe(await r.json())

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-const API_URL = import.meta.env.VITE_API_URL;
+import { api } from "../api";
 
 export default function Chat() {
   const [messages, setMessages] = useState([
@@ -26,7 +26,7 @@ export default function Chat() {
     setBusy(true);
 
     try {
-      const res = await fetch(`${API_URL}/api/chat`, {
+  const res = await fetch(api("/api/chat"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

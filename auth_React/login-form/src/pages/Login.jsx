@@ -14,7 +14,7 @@ const LoginSchema = z.object({
 });
 
 const API_URL = import.meta.env?.VITE_API_URL ?? "http://localhost:8000/default";
-// console.log("API_URL from vite =", API_URL);
+import { api } from "../api";
 
 
 export default function Login() {
@@ -36,9 +36,9 @@ export default function Login() {
 
   async function onSubmit(values) {
     setMessage("");
-    console.log("POST ->", `${API_URL}/api/login`, values.username);
+    console.log("POST ->", api("/api/login"), values.username);
     try {
-      const res = await fetch(`${API_URL}/api/login`, {
+      const res = await fetch(api("/api/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
@@ -49,7 +49,7 @@ export default function Login() {
         throw new Error(err.detail || "Invalid username or password");
       }
 
-      const data = await res.json();
+  const data = await res.json();
       localStorage.setItem("access_token", data.access_token);
 
       setMessage("✅ Logged in!");

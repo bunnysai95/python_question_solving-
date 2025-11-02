@@ -24,16 +24,15 @@ import re
 from fastapi import UploadFile, File, Form
 
 
+
 app = FastAPI(title=settings.APP_NAME)
 
-# CORS so Vite (http://localhost:5173) can call us during dev
+# CORS: allow origins from settings and GitHub Codespaces/dev URLs
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
-    allow_origin_regex=r"^https://.*\.github\.dev$",
+    allow_origins=getattr(settings, "CORS_ORIGINS", []),
+    # allow any github.dev app preview host (http or https)
+    allow_origin_regex=r"^https?://.*\.app\.github\.dev$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

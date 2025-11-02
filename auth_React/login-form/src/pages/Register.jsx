@@ -30,8 +30,7 @@ const RegisterSchema = z.object({
   message: "Passwords do not match",
 });
 
-// ✅ Add this line (base URL for your API)
-const API_URL = import.meta.env?.VITE_API_URL ?? "http://localhost:8000";
+import { api } from "../api";
 
 export default function Register() {
   const [showPw, setShowPw] = useState(false);
@@ -62,7 +61,7 @@ export default function Register() {
         phone: values.phone?.trim() || null,   // backend allows null
       };
 
-      const res = await fetch(`${API_URL}/api/register`, {
+  const res = await fetch(api("/api/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

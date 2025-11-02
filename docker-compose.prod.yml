@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./auth_React/fast_api
+      dockerfile: Dockerfile
+    volumes:
+      - ./auth_React/fast_api:/app
+      - ./auth_React/fast_api/uploads:/app/uploads
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB_URL=sqlite:///./db.sqlite3
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: ./auth_React/login-form
+      dockerfile: Dockerfile.prod
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production

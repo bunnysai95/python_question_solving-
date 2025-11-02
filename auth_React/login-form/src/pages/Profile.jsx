@@ -4,7 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
 
-const API_URL = import.meta.env?.VITE_API_URL ?? "http://localhost:8000";
+import { api } from "../api";
 
 // Very short list just for demo — extend as you like.
 const COUNTRIES = [
@@ -118,7 +118,7 @@ export default function Profile() {
         fd.append("file", values.file[0]);
       }
 
-      const res = await fetch(`${API_URL}/api/profile`, {
+  const res = await fetch(api("/api/profile"), {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: fd,
