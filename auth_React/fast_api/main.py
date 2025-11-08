@@ -7,7 +7,18 @@ from tortoise.contrib.fastapi import register_tortoise
 
 from settings import settings
 from models import User, Profile
-from schemas import RegisterIn, UserOut, LoginIn, TokenOut, MeOut, ProfileOut, ChatRequest, ChatResponse
+from schemas import (
+    RegisterIn,
+    UserOut,
+    LoginIn,
+    TokenOut,
+    MeOut,
+    ProfileOut,
+    ChatRequest,
+    ChatResponse,
+    UpdateMeIn,
+    ChangePasswordIn,
+)
 from security import hash_password, verify_password, create_access_token, get_current_username
 # for chatbot-----
 import asyncio
@@ -78,6 +89,43 @@ async def me(current_username: str = Depends(get_current_username)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return MeOut(username=user.username, firstName=user.first_name, lastName=user.last_name)
+
+
+@app.patch("/api/me", response_model=MeOut)
+async def update_me(payload: UpdateMeIn, current_username: str = Depends(get_current_username)):
+    user = await User.get_or_none(username=current_username)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # apply updates if provided
+    if payload.firstName is not None:
+        user.first_name = payload.firstName
+    if payload.lastName is not None:
+        user.last_name = payload.lastName
+    if getattr(payload, "phone", None) is not None:
+        user.phone = payload.phone
+
+    await user.save()
+    return MeOut(username=user.username, firstName=user.first_name, lastName=user.last_name)
+
+
+@app.post("/api/change-password")
+async def change_password(payload: ChangePasswordIn, current_username: str = Depends(get_current_username)):
+    user = await User.get_or_none(username=current_username)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # verify current password
+    if not verify_password(payload.currentPassword, user.password_hash):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+
+    # basic new password validation
+    if len(payload.newPassword) < 8:
+        raise HTTPException(status_code=422, detail="New password must be at least 8 characters long")
+
+    user.password_hash = hash_password(payload.newPassword)
+    await user.save()
+    return {"ok": True, "message": "Password updated"}
 @app.get("/health")
 def health():
     return {"ok": True}

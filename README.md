@@ -54,4 +54,30 @@ Backend tip: the backend will read `auth_React/fast_api/.env` (copy from `.env.e
 - To enable permissive Codespaces preview origins for development, set `ALLOW_CODESPACES=true` in the backend `.env`. This will allow origins that match `*.app.github.dev` for quick previews. Keep this disabled in production and prefer explicit `CORS_ORIGINS` values.
 
 Quick tip: If you change `.env`, restart the Vite dev server or backend so they pick up the new values.
+
+## Database persistence (SQLite)
+
+This project uses a file-based SQLite DB for local development. By default the backend expects the DB at `./db.sqlite3` relative to the `auth_React/fast_api` folder. When using Docker Compose the folder is bind-mounted, so the DB file lives on the host at:
+
+```
+auth_React/fast_api/db.sqlite3
+```
+
+If you run the backend directly (not in Docker), ensure you start it from the `auth_React/fast_api` folder or set `DB_URL` in `auth_React/fast_api/.env` to the path you'd like to use, for example:
+
+```
+DB_URL=sqlite:///./db.sqlite3
+```
+
+Helper: a small script `auth_React/fast_api/db-check.sh` is included to inspect the DB and create a timestamped backup:
+
+```
+cd auth_React/fast_api
+./db-check.sh           # show DB path and user count
+./db-check.sh backup    # create backups/db.sqlite3.YYYYMMDD_HHMMSS
+```
+
+Notes:
+- If you delete the `db.sqlite3` file or reinitialize the DB schema, any existing rows (users, profiles) will be lost. Keep backups if you need persistent test data.
+- For multi-developer or production use, consider replacing SQLite with Postgres (add a Postgres service to the compose file and change `DB_URL` accordingly).
 # python_question_solving-

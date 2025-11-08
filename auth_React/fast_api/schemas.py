@@ -45,6 +45,17 @@ class MeOut(BaseModel):
     firstName: str
     lastName: str
 
+
+class UpdateMeIn(BaseModel):
+    firstName: str | None = None
+    lastName: str | None = None
+    phone: str | None = None
+
+
+class ChangePasswordIn(BaseModel):
+    currentPassword: str
+    newPassword: str
+
 class ProfileOut(BaseModel):
     id: int
     username: str
