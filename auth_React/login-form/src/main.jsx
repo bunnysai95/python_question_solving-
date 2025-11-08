@@ -7,6 +7,7 @@ import Register from "./pages/Register.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Profile from "./pages/Profile.jsx";
 import Chat from "./pages/Chat.jsx";
+import About from "./pages/About.jsx";
 import "./index.css";
 
 
@@ -22,6 +23,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Login /> },
       { path: "register", element: <Register /> },
+  { path: "about", element: <About /> },
       {
         path: "dashboard",
         element: (

@@ -1,16 +1,18 @@
-import { Outlet, Link } from "react-router-dom";
+import { Outlet } from "react-router-dom";
+import Navbar from "./components/Navbar";
 
 export default function App() {
   return (
     <div className="app">
+      <Navbar />
       <main className="card" role="main">
         <Outlet />
       </main>
 
       <footer className="footer">
         <small>
-          <Link to="/" className="text-link">Sign in</Link> ·{" "}
-          <Link to="/register" className="text-link">Create account</Link>
+          <a className="text-link" href="/">Sign in</a> ·{" "}
+          <a className="text-link" href="/register">Create account</a>
         </small>
       </footer>
     </div>

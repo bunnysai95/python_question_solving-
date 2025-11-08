@@ -13,6 +13,9 @@ class Settings(BaseSettings):
                                   "http://127.0.0.1:5173" ,
                                   "https://disreputable-spooky-apparition-654xw44xp3xwvr-5173.app.github.dev"
                             ,]
+    # When true, allow GitHub Codespaces / GitHub.dev preview origins using a permissive regex.
+    # Set to `false` in production and prefer explicit origins in CORS_ORIGINS.
+    ALLOW_CODESPACES: bool = False
 
     # SQLite for local dev. For Postgres, see the note at the bottom.
     DB_URL: str = "sqlite://db.sqlite3"

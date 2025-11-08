@@ -31,8 +31,8 @@ app = FastAPI(title=settings.APP_NAME)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=getattr(settings, "CORS_ORIGINS", []),
-    # allow any github.dev app preview host (http or https)
-    allow_origin_regex=r"^https?://.*\.app\.github\.dev$",
+    # allow any github.dev app preview host (http or https) only when enabled in settings
+    allow_origin_regex=(r"^https?://.*\.app\.github\.dev$" if getattr(settings, "ALLOW_CODESPACES", False) else None),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

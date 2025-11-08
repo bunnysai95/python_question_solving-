@@ -63,6 +63,7 @@ export default function Profile() {
   const navigate = useNavigate();
   const [message, setMessage] = useState("");
   const [openCountries, setOpenCountries] = useState(false);
+  const [tab, setTab] = useState("profile");
 
   const {
     register,
@@ -93,7 +94,7 @@ export default function Profile() {
   const aboutMe = watch("aboutMe");
   const wc = useMemo(() => wordCount(aboutMe), [aboutMe]);
 
-  // submit
+  // submit profile form
   async function onSubmit(values) {
     setMessage("");
     try {
@@ -144,176 +145,263 @@ export default function Profile() {
     }
   }
 
+  // account settings handlers (name change / password change)
+  const [nameMsg, setNameMsg] = useState("");
+  async function handleNameChange(e) {
+    e.preventDefault();
+    setNameMsg("");
+    // In a real app we'd call a backend endpoint to update name.
+    // For now we simulate success and store in localStorage so UI can reflect it.
+    const fname = e.target.firstName?.value?.trim();
+    const lname = e.target.lastName?.value?.trim();
+    if (!fname || !lname) {
+      setNameMsg("Please provide both first and last name.");
+      return;
+    }
+    try {
+      // simulate API delay
+      await new Promise((r) => setTimeout(r, 300));
+      localStorage.setItem("me_firstName", fname);
+      localStorage.setItem("me_lastName", lname);
+      setNameMsg("✅ Name updated (local demo). Reload or re-login to see server-synced value.");
+    } catch (err) {
+      setNameMsg("Could not update name.");
+    }
+  }
+
+  const [pwMsg, setPwMsg] = useState("");
+  async function handlePasswordChange(e) {
+    e.preventDefault();
+    setPwMsg("");
+    const oldPw = e.target.oldPassword?.value;
+    const newPw = e.target.newPassword?.value;
+    const confirm = e.target.confirmPassword?.value;
+    if (!oldPw || !newPw || !confirm) {
+      setPwMsg("Please fill all password fields.");
+      return;
+    }
+    if (newPw !== confirm) {
+      setPwMsg("New passwords do not match.");
+      return;
+    }
+    if (newPw.length < 8) {
+      setPwMsg("New password must be at least 8 characters.");
+      return;
+    }
+    // No backend endpoint implemented here — simulate success
+    await new Promise((r) => setTimeout(r, 300));
+    setPwMsg("✅ Password changed (demo). Implement backend endpoint to persist.");
+  }
+
   return (
     <>
-      <h1 className="title">Complete your profile</h1>
-      <p className="subtitle">Tell us about yourself</p>
-
-      <form className="form" onSubmit={handleSubmit(onSubmit)} noValidate>
-        {/* First / Last name */}
-        <div className="grid-2">
-          <div>
-            <label className="label" htmlFor="firstName">First name</label>
-            <input
-              id="firstName"
-              autoComplete="given-name"
-              className={`input ${errors.firstName ? "input-error" : ""}`}
-              {...register("firstName")}
-            />
-            <div className="help">{errors.firstName?.message ?? " "}</div>
-          </div>
-
-          <div>
-            <label className="label" htmlFor="lastName">Last name</label>
-            <input
-              id="lastName"
-              autoComplete="family-name"
-              className={`input ${errors.lastName ? "input-error" : ""}`}
-              {...register("lastName")}
-            />
-            <div className="help">{errors.lastName?.message ?? " "}</div>
-          </div>
-        </div>
-
-        {/* DOB */}
-        <label className="label" htmlFor="dob">Date of birth</label>
-        <input
-          id="dob"
-          type="date"
-          autoComplete="bday"
-          className={`input ${errors.dob ? "input-error" : ""}`}
-          {...register("dob")}
-        />
-        <div className="help">{errors.dob?.message ?? " "}</div>
-
-        {/* Gender */}
-        <fieldset className={`fieldset ${errors.gender ? "pw-error" : ""}`}>
-          <legend className="label">Gender</legend>
-          <div className="radio-row">
-            <input id="gender-male" type="radio" value="male" {...register("gender")} />
-            <label htmlFor="gender-male">Male</label>
-            <input id="gender-female" type="radio" value="female" {...register("gender")} />
-            <label htmlFor="gender-female">Female</label>
-          </div>
-          <div className="help">{errors.gender?.message ?? " "}</div>
-        </fieldset>
-
-        {/* Phone */}
-        <label className="label" htmlFor="phone">Phone</label>
-        <input
-          id="phone"
-          autoComplete="tel"
-          placeholder="+1 555 123 4567"
-          className={`input ${errors.phone ? "input-error" : ""}`}
-          {...register("phone")}
-        />
-        <div className="help">{errors.phone?.message ?? " "}</div>
-
-        {/* Address */}
-        <label className="label" htmlFor="address">Address</label>
-        <input
-          id="address"
-          autoComplete="street-address"
-          className={`input ${errors.address ? "input-error" : ""}`}
-          {...register("address")}
-        />
-        <div className="help">{errors.address?.message ?? " "}</div>
-
-        {/* Pincode / Country */}
-        <div className="grid-2">
-          <div>
-            <label className="label" htmlFor="pincode">Pincode</label>
-            <input
-              id="pincode"
-              autoComplete="postal-code"
-              className={`input ${errors.pincode ? "input-error" : ""}`}
-              {...register("pincode")}
-            />
-            <div className="help">{errors.pincode?.message ?? " "}</div>
-          </div>
-
-          <div>
-            <label className="label" htmlFor="country">Country</label>
-            <div
-              className="country-wrap"
-              onMouseEnter={() => setOpenCountries(true)}
-              onMouseLeave={() => setOpenCountries(false)}
-            >
-              <input
-                id="country"                                  // ✅ matches label
-                type="text"
-                autoComplete="country-name"                   // ✅ accessibility hint
-                placeholder="Hover or focus to open, click to select"
-                className={`input ${errors.country ? "input-error" : ""}`}
-                onFocus={() => setOpenCountries(true)}
-                {...register("country")}
-              />
-              {openCountries && (
-                <div className="country-popover">
-                  <ul>
-                    {COUNTRIES.map((c) => (
-                      <li
-                        key={c}
-                        onMouseDown={(e) => e.preventDefault()} // keep focus
-                        onClick={() => {
-                          setValue("country", c, { shouldValidate: true });
-                          setOpenCountries(false);
-                        }}
-                      >
-                        {c}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-            <div className="help">{errors.country?.message ?? " "}</div>
-          </div>
-        </div>
-
-        {/* File (optional) */}
-        <label className="label" htmlFor="file">Upload file</label>
-        <input
-          id="file"                                          // ✅ matches label
-          type="file"
-          className={`input ${errors.file ? "input-error" : ""}`}
-          accept=".png,.jpg,.jpeg,.pdf"
-          {...register("file")}
-        />
-        <div className="help">{errors.file?.message ?? "PNG, JPG or PDF. Max 5MB."}</div>
-
-        {/* About me */}
-        <label className="label" htmlFor="aboutMe">About me</label>
-        <textarea
-          id="aboutMe"                                       // ✅ matches label
-          autoComplete="off"
-          rows={6}
-          className={`input ${errors.aboutMe ? "input-error" : ""}`}
-          placeholder="Write at least 150 words"
-          {...register("aboutMe")}
-        />
-        <div className="help">
-          {errors.aboutMe?.message ?? `${wc} / 150+ words`}
-        </div>
-
-        {/* Acknowledge */}
-        <div className="checkbox-row">
-          <input id="acknowledge" type="checkbox" {...register("acknowledge")} />
-          <label htmlFor="acknowledge">I acknowledge my info</label>
-        </div>
-        <div className="help">{errors.acknowledge?.message ?? " "}</div>
-
-        <button
-          type="submit"
-          className="btn"
-          disabled={!isDirty || !isValid || isSubmitting}
-          aria-busy={isSubmitting}
-        >
-          {isSubmitting ? "Submitting..." : "Submit"}
+      <div className="tabs">
+        <button className={`tab ${tab === "profile" ? "active" : ""}`} onClick={() => setTab("profile")}>
+          Complete profile
         </button>
+        <button className={`tab ${tab === "account" ? "active" : ""}`} onClick={() => setTab("account")}>
+          Account settings
+        </button>
+      </div>
 
-        {message && <div className="message" role="status">{message}</div>}
-      </form>
+      {tab === "profile" ? (
+        <>
+          <h1 className="title">Complete your profile</h1>
+          <p className="subtitle">Tell us about yourself</p>
+
+          <form className="form" onSubmit={handleSubmit(onSubmit)} noValidate>
+            {/* First / Last name */}
+            <div className="grid-2">
+              <div>
+                <label className="label" htmlFor="firstName">First name</label>
+                <input
+                  id="firstName"
+                  autoComplete="given-name"
+                  className={`input ${errors.firstName ? "input-error" : ""}`}
+                  {...register("firstName")}
+                />
+                <div className="help">{errors.firstName?.message ?? " "}</div>
+              </div>
+
+              <div>
+                <label className="label" htmlFor="lastName">Last name</label>
+                <input
+                  id="lastName"
+                  autoComplete="family-name"
+                  className={`input ${errors.lastName ? "input-error" : ""}`}
+                  {...register("lastName")}
+                />
+                <div className="help">{errors.lastName?.message ?? " "}</div>
+              </div>
+            </div>
+
+            {/* DOB */}
+            <label className="label" htmlFor="dob">Date of birth</label>
+            <input
+              id="dob"
+              type="date"
+              autoComplete="bday"
+              className={`input ${errors.dob ? "input-error" : ""}`}
+              {...register("dob")}
+            />
+            <div className="help">{errors.dob?.message ?? " "}</div>
+
+            {/* Gender */}
+            <fieldset className={`fieldset ${errors.gender ? "pw-error" : ""}`}>
+              <legend className="label">Gender</legend>
+              <div className="radio-row">
+                <input id="gender-male" type="radio" value="male" {...register("gender")} />
+                <label htmlFor="gender-male">Male</label>
+                <input id="gender-female" type="radio" value="female" {...register("gender")} />
+                <label htmlFor="gender-female">Female</label>
+              </div>
+              <div className="help">{errors.gender?.message ?? " "}</div>
+            </fieldset>
+
+            {/* Phone */}
+            <label className="label" htmlFor="phone">Phone</label>
+            <input
+              id="phone"
+              autoComplete="tel"
+              placeholder="+1 555 123 4567"
+              className={`input ${errors.phone ? "input-error" : ""}`}
+              {...register("phone")}
+            />
+            <div className="help">{errors.phone?.message ?? " "}</div>
+
+            {/* Address */}
+            <label className="label" htmlFor="address">Address</label>
+            <input
+              id="address"
+              autoComplete="street-address"
+              className={`input ${errors.address ? "input-error" : ""}`}
+              {...register("address")}
+            />
+            <div className="help">{errors.address?.message ?? " "}</div>
+
+            {/* Pincode / Country */}
+            <div className="grid-2">
+              <div>
+                <label className="label" htmlFor="pincode">Pincode</label>
+                <input
+                  id="pincode"
+                  autoComplete="postal-code"
+                  className={`input ${errors.pincode ? "input-error" : ""}`}
+                  {...register("pincode")}
+                />
+                <div className="help">{errors.pincode?.message ?? " "}</div>
+              </div>
+
+              <div>
+                <label className="label" htmlFor="country">Country</label>
+                <div
+                  className="country-wrap"
+                  onMouseEnter={() => setOpenCountries(true)}
+                  onMouseLeave={() => setOpenCountries(false)}
+                >
+                  <input
+                    id="country"
+                    type="text"
+                    autoComplete="country-name"
+                    placeholder="Hover or focus to open, click to select"
+                    className={`input ${errors.country ? "input-error" : ""}`}
+                    onFocus={() => setOpenCountries(true)}
+                    {...register("country")}
+                  />
+                  {openCountries && (
+                    <div className="country-popover">
+                      <ul>
+                        {COUNTRIES.map((c) => (
+                          <li
+                            key={c}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              setValue("country", c, { shouldValidate: true });
+                              setOpenCountries(false);
+                            }}
+                          >
+                            {c}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+                <div className="help">{errors.country?.message ?? " "}</div>
+              </div>
+            </div>
+
+            {/* File (optional) */}
+            <label className="label" htmlFor="file">Upload file</label>
+            <input
+              id="file"
+              type="file"
+              className={`input ${errors.file ? "input-error" : ""}`}
+              accept=".png,.jpg,.jpeg,.pdf"
+              {...register("file")}
+            />
+            <div className="help">{errors.file?.message ?? "PNG, JPG or PDF. Max 5MB."}</div>
+
+            {/* About me */}
+            <label className="label" htmlFor="aboutMe">About me</label>
+            <textarea
+              id="aboutMe"
+              autoComplete="off"
+              rows={6}
+              className={`input ${errors.aboutMe ? "input-error" : ""}`}
+              placeholder="Write at least 150 words"
+              {...register("aboutMe")}
+            />
+            <div className="help">
+              {errors.aboutMe?.message ?? `${wc} / 150+ words`}
+            </div>
+
+            {/* Acknowledge */}
+            <div className="checkbox-row">
+              <input id="acknowledge" type="checkbox" {...register("acknowledge")} />
+              <label htmlFor="acknowledge">I acknowledge my info</label>
+            </div>
+            <div className="help">{errors.acknowledge?.message ?? " "}</div>
+
+            <button
+              type="submit"
+              className="btn"
+              disabled={!isDirty || !isValid || isSubmitting}
+              aria-busy={isSubmitting}
+            >
+              {isSubmitting ? "Submitting..." : "Submit"}
+            </button>
+
+            {message && <div className="message" role="status">{message}</div>}
+          </form>
+        </>
+      ) : (
+        <div>
+          <h1 className="title">Account settings</h1>
+          <p className="subtitle">Change name, password, or other account details</p>
+
+          <div className="card-block">
+            <h3>Change name</h3>
+            <form onSubmit={handleNameChange} className="form-inline">
+              <input name="firstName" placeholder="First name" className="input" />
+              <input name="lastName" placeholder="Last name" className="input" />
+              <button className="btn" type="submit">Save</button>
+            </form>
+            {nameMsg && <div className="help">{nameMsg}</div>}
+          </div>
+
+          <div className="card-block" style={{ marginTop: "1rem" }}>
+            <h3>Change password</h3>
+            <form onSubmit={handlePasswordChange} className="form-inline">
+              <input name="oldPassword" type="password" placeholder="Current password" className="input" />
+              <input name="newPassword" type="password" placeholder="New password" className="input" />
+              <input name="confirmPassword" type="password" placeholder="Confirm new password" className="input" />
+              <button className="btn" type="submit">Change password</button>
+            </form>
+            {pwMsg && <div className="help">{pwMsg}</div>}
+          </div>
+        </div>
+      )}
     </>
   );
 }
