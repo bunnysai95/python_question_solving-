@@ -37,3 +37,15 @@ class Profile(Model):
 
     class Meta:
         table = "profiles"
+
+
+class TaskStatus(Model):
+    id = fields.IntField(pk=True)
+    name = fields.CharField(100)
+    status = fields.CharField(20, default="pending")  # pending | working | success | failed
+    started_at = fields.DatetimeField(null=True)
+    finished_at = fields.DatetimeField(null=True)
+    error = fields.TextField(null=True)
+
+    class Meta:
+        table = "task_status"

@@ -1,12 +1,13 @@
 # main.py
 from fastapi import FastAPI, HTTPException, status, Depends
+import logging
 from fastapi.middleware.cors import CORSMiddleware
 from tortoise.contrib.fastapi import register_tortoise
 
 
 
 from settings import settings
-from models import User, Profile
+from models import User, Profile, TaskStatus
 from schemas import (
     RegisterIn,
     UserOut,
@@ -27,7 +28,7 @@ from typing import List
 
 # forms after login page 
 from typing import Literal
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from uuid import uuid4
 import re
@@ -37,6 +38,25 @@ from fastapi import UploadFile, File, Form
 
 
 app = FastAPI(title=settings.APP_NAME)
+
+# Basic logging configuration for the app
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
+logger = logging.getLogger("app")
+
+# Register global exception handlers (validation, HTTP errors, and uncaught exceptions)
+from errors import http_exception_handler, validation_exception_handler, generic_exception_handler
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from middleware import RequestLoggingMiddleware
+
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, generic_exception_handler)
+
+# request/response logging middleware
+from starlette.middleware import Middleware
+from starlette.middleware.base import BaseHTTPMiddleware
+app.add_middleware(RequestLoggingMiddleware)
 
 # CORS: allow origins from settings and GitHub Codespaces/dev URLs
 app.add_middleware(
@@ -126,6 +146,95 @@ async def change_password(payload: ChangePasswordIn, current_username: str = Dep
     user.password_hash = hash_password(payload.newPassword)
     await user.save()
     return {"ok": True, "message": "Password updated"}
+
+
+# --- ETL endpoints: queue a background task and query status ---
+from celery_app import celery_app
+from uuid import uuid4
+
+
+@app.post("/api/etl/upload")
+async def upload_etl(file: UploadFile = File(...), current_username: str = Depends(get_current_username)):
+    """Accept a CSV file upload (multipart/form-data) and enqueue a worker task to process it.
+    The endpoint immediately returns a task_id (TaskStatus record) that can be polled.
+    """
+    # basic content-type check (allow text/csv and common fallbacks)
+    allowed = {"text/csv", "application/csv", "text/plain"}
+    # some clients may not set content_type for .csv, so we don't strictly enforce it
+
+    # persist uploaded file to disk in uploads dir
+    ext = Path(file.filename).suffix
+    fname = f"{uuid4().hex}_{_safe_filename(file.filename)}"
+    dest = UPLOADS_DIR / fname
+    # stream write to avoid loading entire file to memory
+    try:
+        with open(dest, "wb") as f:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                f.write(chunk)
+    finally:
+        await file.close()
+
+    # create task status
+    t = await TaskStatus.create(name="etl_upload", status="pending")
+
+    # enqueue celery task (worker will initialize DB and update TaskStatus)
+    try:
+        # import here to avoid circular imports at module import time
+        from celery_tasks import process_etl_file
+        process_etl_file.apply_async(args=[t.id, str(dest)])
+    except Exception as exc:
+        # mark as failed and return 500
+        t.status = "failed"
+        t.error = f"enqueue_failed: {str(exc)}"
+        t.finished_at = datetime.utcnow()
+        await t.save()
+        raise HTTPException(status_code=500, detail="Failed to enqueue ETL task")
+
+    return {"status": "accepted", "task_id": t.id}
+
+
+@app.get("/api/etl/tasks")
+async def list_tasks(limit: int = 50):
+    """Return most recent TaskStatus records (simple list endpoint used by Task History UI)."""
+    q = TaskStatus.all().order_by("-id")
+    if limit:
+        q = q.limit(limit)
+    tasks = await q
+    out = []
+    for t in tasks:
+        out.append({
+            "id": t.id,
+            "name": t.name,
+            "status": t.status,
+            "started_at": t.started_at,
+            "finished_at": t.finished_at,
+            "error": t.error,
+        })
+    return out
+
+
+@app.get("/api/etl/tasks/{task_id}")
+async def get_task_status(task_id: int):
+    t = await TaskStatus.get_or_none(id=task_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {
+        "id": t.id,
+        "name": t.name,
+        "status": t.status,
+        "started_at": t.started_at,
+        "finished_at": t.finished_at,
+        "error": t.error,
+    }
+
+
+# debug endpoint to trigger an uncaught exception (useful for testing error handler)
+@app.get("/__test/raise")
+def _raise():
+    raise RuntimeError("test-exception")
 @app.get("/health")
 def health():
     return {"ok": True}

@@ -8,6 +8,8 @@ import Dashboard from "./pages/Dashboard.jsx";
 import Profile from "./pages/Profile.jsx";
 import Chat from "./pages/Chat.jsx";
 import About from "./pages/About.jsx";
+import ETLUpload from "./pages/ETLUpload.jsx";
+import TaskHistory from "./pages/TaskHistory.jsx";
 import "./index.css";
 
 
@@ -37,6 +39,22 @@ const router = createBrowserRouter([
         element: (
           <RequireAuth>
             <Profile />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "etl",
+        element: (
+          <RequireAuth>
+            <ETLUpload />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "tasks",
+        element: (
+          <RequireAuth>
+            <TaskHistory />
           </RequireAuth>
         ),
       },

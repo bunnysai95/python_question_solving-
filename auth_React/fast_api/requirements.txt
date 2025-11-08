@@ -6,4 +6,6 @@ passlib
 python-jose
 aiofiles
 python-multipart
+celery[redis]
+redis
 

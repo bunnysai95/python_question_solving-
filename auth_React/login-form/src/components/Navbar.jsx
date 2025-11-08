@@ -15,6 +15,8 @@ export default function Navbar() {
         <div className="nav-brand">MyApp</div>
         <ul className="nav-links">
           <li><Link to="/dashboard">Home</Link></li>
+          <li><Link to="/etl">ETL Upload</Link></li>
+          <li><Link to="/tasks">Task History</Link></li>
           <li><Link to="/about">About Me</Link></li>
           <li><Link to="/profile">Profile</Link></li>
           <li><button className="link-like" onClick={handleLogout}>Log out</button></li>
