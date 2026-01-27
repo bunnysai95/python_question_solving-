@@ -1,0 +1,3 @@
+path intellisense // to tell the path and there structure 
+error lenses // will tell what the error is and where it is comming from line 
+thunder clinet // same like a postman but inside the vs code it self
