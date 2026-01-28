@@ -19,6 +19,8 @@ from schemas import (
     ChatResponse,
     UpdateMeIn,
     ChangePasswordIn,
+    ResearchIn,
+    ResearchOut,
 )
 from security import hash_password, verify_password, create_access_token, get_current_username
 # for chatbot-----
@@ -327,6 +329,69 @@ async def create_profile(
         aboutMe=p.about_me,
         filePath=p.file_path,
     )
+
+
+@app.post("/api/research", response_model=ResearchOut)
+async def submit_research(payload: ResearchIn, current_username: str = Depends(get_current_username)):
+    """Accept UX research form submissions (JSON) and store them in DB linked to user."""
+    user = await User.get_or_none(username=current_username)
+    # user may be None if token valid but user deleted; allow storing with null user but prefer user
+    u = user
+    from models import Research
+
+    r = await Research.create(
+        user=u,
+        first_name=payload.firstName,
+        last_name=payload.lastName,
+        email=payload.email,
+        phone=payload.phone,
+        address1=payload.address1,
+        address2=payload.address2,
+        city=payload.city,
+        region=payload.region,
+        postal=payload.postal,
+        country=payload.country,
+        rating=(payload.rating or 3),
+        comments=payload.comments,
+    )
+
+    return ResearchOut(
+        id=r.id,
+        username=(user.username if user else None),
+        firstName=r.first_name,
+        lastName=r.last_name,
+        email=r.email,
+        rating=r.rating,
+        created_at=r.created_at.isoformat(),
+    )
+
+
+@app.get("/api/research", response_model=List[ResearchOut])
+async def list_research(current_username: str = Depends(get_current_username)):
+    """Return recent research submissions (requires auth)."""
+    from models import Research
+    # prefetch related user so we can access r.user.username without extra awaits
+    q = Research.all().prefetch_related("user").order_by("-id").limit(500)
+    rows = await q
+    out = []
+    for r in rows:
+        uname = None
+        if getattr(r, "user", None):
+            try:
+                uname = r.user.username
+            except Exception:
+                uname = None
+        out.append({
+            "id": r.id,
+            "username": uname,
+            "firstName": r.first_name,
+            "lastName": r.last_name,
+            "email": r.email,
+            "rating": r.rating,
+            "comments": r.comments,
+            "created_at": r.created_at.isoformat(),
+        })
+    return out
 
 
 # ---- Chat provider (echo fallback or Groq) ----

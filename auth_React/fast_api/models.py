@@ -49,3 +49,24 @@ class TaskStatus(Model):
 
     class Meta:
         table = "task_status"
+
+
+class Research(Model):
+    id = fields.IntField(pk=True)
+    user = fields.ForeignKeyField("models.User", related_name="researches", null=True, on_delete=fields.SET_NULL)
+    first_name = fields.CharField(50)
+    last_name = fields.CharField(50)
+    email = fields.CharField(200)
+    phone = fields.CharField(50, null=True)
+    address1 = fields.TextField(null=True)
+    address2 = fields.TextField(null=True)
+    city = fields.CharField(100, null=True)
+    region = fields.CharField(100, null=True)
+    postal = fields.CharField(50, null=True)
+    country = fields.CharField(100, null=True)
+    rating = fields.IntField(default=3)
+    comments = fields.TextField(null=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+
+    class Meta:
+        table = "research"

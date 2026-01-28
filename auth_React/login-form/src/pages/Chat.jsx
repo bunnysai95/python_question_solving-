@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-
 import { api } from "../api";
 
+// Chat component definition
 export default function Chat() {
   const [messages, setMessages] = useState([
     { role: "assistant", content: "Hi! Ask me anything." },

@@ -10,6 +10,8 @@ import Chat from "./pages/Chat.jsx";
 import About from "./pages/About.jsx";
 import ETLUpload from "./pages/ETLUpload.jsx";
 import TaskHistory from "./pages/TaskHistory.jsx";
+import ResearchForm from "./pages/ResearchForm.jsx";
+import ResearchList from "./pages/ResearchList.jsx";
 import "./index.css";
 
 
@@ -25,52 +27,17 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Login /> },
       { path: "register", element: <Register /> },
-  { path: "about", element: <About /> },
-      {
-        path: "dashboard",
-        element: (
-          <RequireAuth>
-            <Dashboard />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "profile",
-        element: (
-          <RequireAuth>
-            <Profile />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "etl",
-        element: (
-          <RequireAuth>
-            <ETLUpload />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "tasks",
-        element: (
-          <RequireAuth>
-            <TaskHistory />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "chat",
-        element: (
-          <RequireAuth>
-            <Chat />
-          </RequireAuth>
-        ),
-      },
+      { path: "about", element: <About /> },
+      { path: "dashboard", element: (<RequireAuth><Dashboard /></RequireAuth>)},
+      { path:"profile", element:(<RequireAuth><Profile /></RequireAuth>)},
+      { path: "etl", element: (<RequireAuth><ETLUpload /></RequireAuth>)},
+      {path:"Tasks", element: (<RequireAuth><TaskHistory /></RequireAuth>)},
+      {path: "research", element: (<RequireAuth><ResearchForm /></RequireAuth>)},
+      {path: "research/list", element: (<RequireAuth><ResearchList /></RequireAuth>)},
+      {path: "chat",element:(<RequireAuth><Chat /></RequireAuth>)},
     ],
   },
 ]);
-
-
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <RouterProvider router={router} />

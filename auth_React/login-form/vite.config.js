@@ -10,7 +10,7 @@ export default defineConfig(({ command, mode }) => ({
     // Proxy /api to the backend service when running inside Docker Compose
     proxy: {
       '/api': {
-        target: 'http://backend:8000',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
       },

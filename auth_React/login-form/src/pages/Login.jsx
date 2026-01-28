@@ -119,7 +119,6 @@ export default function Login() {
           <span>New here?</span>{" "}
           <Link to="/register" className="text-link">Create account</Link>
         </div>
-
         {message && <div className="message" role="status">{message}</div>}
       </form>
     </>

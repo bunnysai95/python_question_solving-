@@ -82,3 +82,31 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
+
+
+# Research form schemas
+class ResearchIn(BaseModel):
+    firstName: str
+    lastName: str
+    email: str
+    phone: str | None = None
+    address1: str | None = None
+    address2: str | None = None
+    city: str | None = None
+    region: str | None = None
+    postal: str | None = None
+    country: str | None = None
+    rating: int | None = 3
+    comments: str | None = None
+
+
+class ResearchOut(BaseModel):
+    id: int
+    username: str | None = None
+    firstName: str
+    lastName: str
+    email: str
+    rating: int
+    created_at: str
+
+    model_config = ConfigDict(from_attributes=True)

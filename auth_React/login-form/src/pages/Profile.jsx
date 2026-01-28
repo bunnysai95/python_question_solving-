@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react"; //useMemo=> optimize performance
+import { useForm } from "react-hook-form"; // useForm => use forms is used to handle form validation and submission easy 
+import { z } from "zod"; // zod => schema validation each field is must not null 
+import { zodResolver } from "@hookform/resolvers/zod"; // zodResolver => integrate zod with react hook form
 import { Link, useNavigate } from "react-router-dom";
 
-import { api } from "../api";
+import { api } from "../api"; // api => helper to construct API URLs
+
+// ----- Helper functions -----
 
 // Very short list just for demo — extend as you like.
 const COUNTRIES = [
@@ -209,7 +211,7 @@ export default function Profile() {
           <h1 className="title">Complete your profile</h1>
           <p className="subtitle">Tell us about yourself</p>
 
-          <form className="form" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <form className="form" onSubmit={handleSubmit(onSubmit)} noValidate> {/* function on submit, like html submit button */}
             {/* First / Last name */}
             <div className="grid-2">
               <div>
@@ -294,11 +296,7 @@ export default function Profile() {
 
               <div>
                 <label className="label" htmlFor="country">Country</label>
-                <div
-                  className="country-wrap"
-                  onMouseEnter={() => setOpenCountries(true)}
-                  onMouseLeave={() => setOpenCountries(false)}
-                >
+                <div className="country-wrap" onMouseEnter={() => setOpenCountries(true)} onMouseLeave={() => setOpenCountries(false)}>
                   <input
                     id="country"
                     type="text"
