@@ -34,14 +34,14 @@ export default function ResearchList() {
   if (!items) return <div className="message">Loading…</div>;
 
   return (
-    <div className="card card-large">
+    <div className="research-container">
       <h1 className="title">Research submissions</h1>
       <p className="subtitle">All stored UX feedback</p>
 
       {items.length === 0 ? (
-        <div className="card-block">No submissions yet</div>
+        <div className="empty-state">No submissions yet</div>
       ) : (
-        <div className="card-block table-responsive">
+        <div className="table-wrapper">
           <table className="research-table" aria-describedby="research-list">
             <thead>
               <tr>
@@ -49,19 +49,19 @@ export default function ResearchList() {
                 <th>User Name</th>
                 <th>Email</th>
                 <th>Rating</th>
-                <th className="research-comments">Comments</th>
+                <th>Comments</th>
                 <th>Created</th>
               </tr>
             </thead>
             <tbody>
               {items.map((r) => (
                 <tr key={r.id}>
-                  <td style={{ width: 48 }}>{r.id}</td>
-                  <td style={{ width: 140 }}>{r.username ?? "-"}</td>
-                  <td style={{ width: 240 }}>{r.email}</td>
-                  <td style={{ width: 80 }}>{r.rating}</td>
-                  <td className="research-comments">{r.comments}</td>
-                  <td style={{ width: 180 }}>{new Date(r.created_at).toLocaleString()}</td>
+                  <td className="col-id">{r.id}</td>
+                  <td className="col-name">{r.username ?? "-"}</td>
+                  <td className="col-email">{r.email}</td>
+                  <td className="col-rating">{r.rating}</td>
+                  <td className="col-comments">{r.comments || "-"}</td>
+                  <td className="col-date">{r.created_at ? new Date(r.created_at).toLocaleString() : "-"}</td>
                 </tr>
               ))}
             </tbody>

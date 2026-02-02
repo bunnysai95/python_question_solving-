@@ -21,38 +21,21 @@ export default function Dashboard() { // main dashboard page after login
                                : setError((await r.json()).detail || "Failed to load profile"))) // else set error message from response
       .catch(() => setError("Network error")); // handle network errors
   }, []);
-
   if (error) return <div className="message">❌ {error}</div>; // display error message
   if (!me) return <div className="message">Loading…</div>; // display loading message while fetching profile
 
   return (
     <div>
       <h1 className="title">welcome {me.firstName}</h1><p className="subtitle">You’re signed in as <strong>{me.username}</strong></p>
-
       {/* buttons */}
       <div className="grid-2" style={{ marginTop: "1rem" }}>
-        <Link to="/profile" className="btn" style={{ textAlign: "center" }}>
-          Complete profile
-        </Link>
-        <Link to="/research" className="btn" style={{ textAlign: "center" }}>
-          UX Research form
-        </Link>
-        <Link to="/research/list" className="btn" style={{ textAlign: "center" }}>
-          View submissions
-        </Link>
-        <Link to="/etl" className="btn" style={{ textAlign: "center" }}>
-          ETL Upload
-        </Link>
-        <Link to="/chat" className="btn" style={{ textAlign: "center" }}>
-          Open chat
-        </Link>
-                <Link to="/Tasks" className="btn" style={{ textAlign: "center" }}>
-          Task History
-        </Link>
-                <Link to="/About" className="btn" style={{ textAlign: "center" }}>
-          About
-        </Link>
-
+        <Link to="/profile" className="btn" style={{ textAlign: "center" }}>Complete profile</Link>
+        <Link to="/research" className="btn" style={{ textAlign: "center" }}>Research form</Link>
+        <Link to="/research/list" className="btn" style={{ textAlign: "center" }}>Research View submissions</Link>
+        <Link to="/etl" className="btn" style={{ textAlign: "center" }}>ETL Upload</Link>
+        <Link to="/chat" className="btn" style={{ textAlign: "center" }}>Open chat</Link>
+        <Link to="/Tasks" className="btn" style={{ textAlign: "center" }}>Task History</Link>
+        <Link to="/About" className="btn" style={{ textAlign: "center" }}>About</Link>
         <button className="btn" onClick={() => {
             localStorage.removeItem("access_token");
             window.location.href = "/";

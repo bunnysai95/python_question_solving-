@@ -57,8 +57,8 @@ export default function ResearchForm() {
 
   return (
     <div>
-      <h1 className="title">User Experience Research Form</h1>
-      <p className="subtitle">We appreciate your feedback</p>
+      <h1 className="title">Experience Research Form</h1>
+      <p className="subtitle"></p>
 
       <form className="form" onSubmit={handleSubmit(onSubmit)}>
         <div className="grid-2">

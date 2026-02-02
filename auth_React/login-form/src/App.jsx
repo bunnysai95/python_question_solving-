@@ -8,13 +8,6 @@ export default function App() {
       <main className="card" role="main">
         <Outlet />
       </main>
-
-      <footer className="footer">
-        <small>
-          <a className="text-link" href="/">Sign in</a> ·{" "}
-          <a className="text-link" href="/register">Create account</a>
-        </small>
-      </footer>
     </div>
   );
 }

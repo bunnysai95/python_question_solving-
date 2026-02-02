@@ -135,13 +135,12 @@ export default function Register() {
           {isSubmitting ? "Creating..." : "Create account"}
         </button>
 
-        <div className="below-cta">
-          <span>Already have an account?</span>{" "}
-          <Link to="/" className="text-link">Sign in</Link>
-        </div>
-
         {message && <div className="message" role="status">{message}</div>}
       </form>
+
+      <div className="below-cta">
+        <span>Already have an account?</span> · <Link to="/" className="text-link">Sign in</Link>
+      </div>
     </>
   );
 }

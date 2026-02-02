@@ -115,12 +115,12 @@ export default function Login() {
           {isSubmitting ? "Signing in..." : "Sign In"}
         </button>
 
-        <div className="below-cta">
-          <span>New here?</span>{" "}
-          <Link to="/register" className="text-link">Create account</Link>
-        </div>
         {message && <div className="message" role="status">{message}</div>}
       </form>
+
+      <div className="below-cta">
+        <span>Sign in</span> · <Link to="/register" className="text-link">Create account</Link>
+      </div>
     </>
   );
 }
